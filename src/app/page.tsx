@@ -1,65 +1,101 @@
-import Image from "next/image";
+"use client";
+
+import { useMemo, useState } from "react";
+import { OmniBar } from "@/components/dashboard/omni-bar";
+import { JournalView } from "@/components/dashboard/journal-view";
+import { EditItemDialog } from "@/components/dashboard/edit-item-dialog";
+import { useItems } from "@/hooks/use-items";
+import { Item } from "@/lib/schema";
+import { ParsedResult } from "@/lib/parser";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
+  const { items, isLoaded, addItem, updateItem, deleteItem } = useItems();
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+
+  // Derived State
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    items.forEach(item => item.tags?.forEach(t => tags.add(t)));
+    return Array.from(tags).sort();
+  }, [items]);
+
+  const filteredItems = activeTagFilter
+    ? items.filter(i => i.tags.includes(activeTagFilter))
+    : items;
+
+  const journalItems = [...filteredItems].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  const handleOmniAdd = (parsed: ParsedResult) => {
+    addItem({
+      id: Math.random().toString(36).substr(2, 9),
+      content: parsed.content,
+      type: parsed.type,
+      tags: parsed.tags,
+      priority: parsed.priority,
+      dueDate: parsed.dueDate,
+      status: "todo",
+      isCompleted: false,
+      createdAt: new Date(),
+      description: ""
+    });
+  };
+
+  if (!isLoaded) return null;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="flex flex-col gap-6 h-[calc(100vh-6rem)]">
+
+      {/* Filter Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <span className="text-xs font-medium text-muted-foreground mr-2">Filter:</span>
+        <Button
+          variant={activeTagFilter === null ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTagFilter(null)}
+          className="rounded-full h-6 text-xs px-3"
+        >
+          Alle
+        </Button>
+        {allTags.map(tag => (
+          <Button
+            key={tag}
+            variant={activeTagFilter === tag ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTagFilter(tag === activeTagFilter ? null : tag)}
+            className={`rounded-full h-6 text-xs px-3 ${activeTagFilter === tag ? "" : "border-dashed"}`}
+          >
+            #{tag}
+          </Button>
+        ))}
+      </div>
+
+      {/* Omni Bar */}
+      <OmniBar onAddItem={handleOmniAdd} allTags={allTags} />
+
+      {/* Journal View */}
+      <div className="flex-1 overflow-hidden border rounded-xl bg-muted/10 relative">
+        <JournalView
+          items={journalItems}
+          onDelete={deleteItem}
+          onToggle={(id) => {
+            const item = items.find(i => i.id === id);
+            if (item) updateItem({ ...item, status: item.status === 'done' ? 'todo' : 'done', isCompleted: !item.isCompleted });
+          }}
+          onEdit={setEditingItem}
+          onTagClick={setActiveTagFilter}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
+
+      {/* Edit Modal */}
+      <EditItemDialog
+        item={editingItem}
+        open={!!editingItem}
+        onClose={() => setEditingItem(null)}
+        onSave={updateItem}
+        onDelete={deleteItem}
+      />
     </div>
   );
 }
