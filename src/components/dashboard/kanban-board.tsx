@@ -197,7 +197,7 @@ function KanbanCardContent({ item, isOverlay }: { item: Item, isOverlay?: boolea
 
   return (
     <Card className={cn(
-      "cursor-grab active:cursor-grabbing hover:shadow-md transition-all bg-background border-muted-foreground/10 group-hover:border-primary/40",
+      "cursor-grab active:cursor-grabbing hover:shadow-md transition-all bg-background border-muted-foreground/10 group-hover:border-primary/40 py-0",
       isOverlay && "cursor-grabbing shadow-xl ring-2 ring-primary/10 rotate-2 w-[280px]"
     )}>
       <CardContent className="p-3.5 space-y-2.5">
