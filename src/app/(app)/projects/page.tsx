@@ -7,8 +7,10 @@ import { EditItemDialog } from "@/components/dashboard/edit-item-dialog";
 import { Item } from "@/lib/schema";
 import { List as ListIcon, Columns as ColumnsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { stackClientApp } from "@/stack/client";
 
 export default function ProjectsPage() {
+  const user = stackClientApp.useUser({ or: 'redirect' });
   const { items, isLoaded, updateItem, deleteItem } = useItems();
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("kanban");

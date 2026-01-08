@@ -8,8 +8,10 @@ import { useItems } from "@/hooks/use-items";
 import { Item } from "@/lib/schema";
 import { ParsedResult } from "@/lib/parser";
 import { Button } from "@/components/ui/button";
+import { stackClientApp } from "@/stack/client";
 
 export default function Home() {
+  const user = stackClientApp.useUser({ or: 'redirect' });
   const { items, isLoaded, addItem, updateItem, deleteItem } = useItems();
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<Item | null>(null);

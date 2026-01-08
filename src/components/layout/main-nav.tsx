@@ -14,8 +14,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { stackClientApp } from "@/stack/client";
 
 export function MainNav() {
+  const user = stackClientApp.useUser();
   const pathname = usePathname();
 
   const navItems = [
@@ -66,29 +68,20 @@ export function MainNav() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="/avatars/01.png" alt="@user" />
-                  <AvatarFallback>U</AvatarFallback>
+                  <AvatarImage src={user?.profileImageUrl!} alt="@user" />
+                  <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">Max Mustermann</p>
-                  <p className="text-xs leading-none text-muted-foreground">max@example.com</p>
+                  <p className="text-sm font-medium leading-none">{user?.displayName}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{user?.primaryEmail}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profil</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Einstellungen</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => stackClientApp.signOut()} className="text-red-500">
                 Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
