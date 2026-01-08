@@ -4,28 +4,53 @@ import { useMemo, useState } from "react";
 import { OmniBar } from "@/components/dashboard/omni-bar";
 import { JournalView } from "@/components/dashboard/journal-view";
 import { EditItemDialog } from "@/components/dashboard/edit-item-dialog";
+import { FilterBar } from "@/components/dashboard/filter-bar";
 import { useItems } from "@/hooks/use-items";
+import { useUrlFilters } from "@/hooks/use-url-filters";
 import { Item } from "@/lib/schema";
 import { ParsedResult } from "@/lib/parser";
-import { Button } from "@/components/ui/button";
 import { stackClientApp } from "@/stack/client";
+import { isSameDay, isPast } from "date-fns";
 
 export default function Home() {
   const user = stackClientApp.useUser({ or: 'redirect' });
+
   const { items, isLoaded, addItem, updateItem, deleteItem } = useItems();
-  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+
+  // Neuer Hook für URL-Filter statt lokalem State
+  const { activeTag, activePrio, activeDate } = useUrlFilters();
+
   const [editingItem, setEditingItem] = useState<Item | null>(null);
 
-  // Derived State
+  // Derived State: Alle verfügbaren Tags sammeln für die FilterBar
   const allTags = useMemo(() => {
     const tags = new Set<string>();
     items.forEach(item => item.tags?.forEach(t => tags.add(t)));
     return Array.from(tags).sort();
   }, [items]);
 
-  const filteredItems = activeTagFilter
-    ? items.filter(i => i.tags.includes(activeTagFilter))
-    : items;
+  // KOMPLEXE FILTER LOGIK
+  const filteredItems = useMemo(() => {
+    return items.filter(i => {
+      // 1. Tag Filter
+      if (activeTag && !i.tags.includes(activeTag)) return false;
+
+      // 2. Prio Filter
+      if (activePrio && i.priority !== activePrio) return false;
+
+      // 3. Date Filter
+      if (activeDate) {
+        if (!i.dueDate) return false;
+        const due = new Date(i.dueDate);
+        const today = new Date();
+
+        if (activeDate === 'today' && !isSameDay(due, today)) return false;
+        if (activeDate === 'overdue' && (isPast(due) && !isSameDay(due, today))) return false;
+      }
+
+      return true;
+    });
+  }, [items, activeTag, activePrio, activeDate]);
 
   const journalItems = [...filteredItems].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
@@ -49,29 +74,8 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-6 h-[calc(100vh-6rem)]">
 
-      {/* Filter Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-        <span className="text-xs font-medium text-muted-foreground mr-2">Filter:</span>
-        <Button
-          variant={activeTagFilter === null ? "default" : "outline"}
-          size="sm"
-          onClick={() => setActiveTagFilter(null)}
-          className="rounded-full h-6 text-xs px-3"
-        >
-          Alle
-        </Button>
-        {allTags.map(tag => (
-          <Button
-            key={tag}
-            variant={activeTagFilter === tag ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTagFilter(tag === activeTagFilter ? null : tag)}
-            className={`rounded-full h-6 text-xs px-3 ${activeTagFilter === tag ? "" : "border-dashed"}`}
-          >
-            #{tag}
-          </Button>
-        ))}
-      </div>
+      {/* Neue Filter Bar Component */}
+      <FilterBar allTags={allTags} />
 
       {/* Omni Bar */}
       <OmniBar onAddItem={handleOmniAdd} allTags={allTags} />
@@ -86,7 +90,7 @@ export default function Home() {
             if (item) updateItem({ ...item, status: item.status === 'done' ? 'todo' : 'done', isCompleted: !item.isCompleted });
           }}
           onEdit={setEditingItem}
-          onTagClick={setActiveTagFilter}
+          onTagClick={() => { }}
         />
       </div>
 
