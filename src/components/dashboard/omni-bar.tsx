@@ -84,7 +84,7 @@ export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
   };
 
   return (
-    <div className="relative z-20 space-y-1">
+    <div className="relative z-20 space-y-2">
       <div className={`flex items-center gap-2 bg-background border rounded-md shadow-sm px-3 py-2 transition-all focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${error ? "border-red-500 ring-red-200" : ""}`}>
         <div className={`flex items-center justify-center w-6 h-6 rounded-sm shrink-0 transition-colors ${parsedPreview?.type === 'todo' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
           {parsedPreview?.type === 'todo' ? <CheckSquare size={14} /> : <StickyNote size={14} />}
