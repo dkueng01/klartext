@@ -2,17 +2,17 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes"; // Für Dark Mode
+import { useTheme } from "next-themes";
 import {
   LayoutDashboard,
   KanbanSquare,
-  Settings,
   Plus,
   Moon,
   Sun,
   Laptop,
-  Hash,
-  Search
+  Search,
+  LogOut,
+  User
 } from "lucide-react";
 
 import {
@@ -25,125 +25,98 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
+import { useHotkeys } from "@/hooks/use-hotkeys";
+import { useStackApp } from "@stackframe/stack";
 
 export function CommandMenu() {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
   const { setTheme } = useTheme();
+  const app = useStackApp(); // Für Logout
 
-  // --- 1. Hotkey Listener (CMD+K) ---
-  React.useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((open) => !open);
+  // --- ACTIONS ---
+
+  const actions = React.useMemo(() => ({
+    gotoJournal: () => router.push("/"),
+    gotoProjects: () => router.push("/projects"),
+    newItem: () => {
+      // Navigiere erst (falls nötig)
+      if (window.location.pathname !== "/") {
+        router.push("/");
+        // Kleines Timeout damit React Zeit hat zu rendern
+        setTimeout(() => focusInput(), 100);
+      } else {
+        focusInput();
       }
-    };
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, []);
+    },
+    resetFilter: () => router.push("/"), // Einfachste Art Filter zu clearen: Reload/Nav
+    logout: () => app.signOut(),
+  }), [router, app]);
+
+  // Helper um Input zu finden
+  const focusInput = () => {
+    const input = document.querySelector('input[placeholder*="Eingabe"]') as HTMLInputElement;
+    if (input) {
+      input.focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const runCommand = React.useCallback((command: () => unknown) => {
     setOpen(false);
     command();
   }, []);
 
-  // --- 2. Tags auslesen (Kleiner Hack für Client-Side Only) ---
-  // Da wir keine globale Datenbank im Context haben (noch nicht), 
-  // lesen wir die Tags einmalig beim Öffnen aus dem LocalStorage
-  const [knownTags, setKnownTags] = React.useState<string[]>([]);
 
-  React.useEffect(() => {
-    if (open) {
-      const saved = localStorage.getItem("klartext-data");
-      if (saved) {
-        try {
-          const items = JSON.parse(saved);
-          const tags = new Set<string>();
-          items.forEach((i: any) => i.tags?.forEach((t: string) => tags.add(t)));
-          setKnownTags(Array.from(tags).sort());
-        } catch (e) { }
-      }
-    }
-  }, [open]);
+  // --- GLOBAL SHORTCUTS REGISTRATION ---
+
+  // Toggle Menu: CMD+K
+  useHotkeys("k", () => setOpen((open) => !open));
+
+  // Navigation: CMD+J (Journal), CMD+P (Projekte)
+  useHotkeys("j", actions.gotoJournal);
+  useHotkeys("p", actions.gotoProjects);
+
+  // Action: CMD+N (New Item)
+  useHotkeys("n", actions.newItem);
+
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Was möchtest du tun?" />
+      <CommandInput placeholder="Suche nach Befehlen..." />
       <CommandList>
         <CommandEmpty>Keine Ergebnisse.</CommandEmpty>
 
-        {/* Navigation */}
-        <CommandGroup heading="Gehe zu">
-          <CommandItem onSelect={() => runCommand(() => router.push("/"))}>
+        <CommandGroup heading="Navigation">
+          <CommandItem onSelect={() => runCommand(actions.gotoJournal)}>
             <LayoutDashboard className="mr-2 h-4 w-4" />
             <span>Journal</span>
-            <CommandShortcut>⌃J</CommandShortcut>
+            <CommandShortcut>⌘J</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/projects"))}>
+          <CommandItem onSelect={() => runCommand(actions.gotoProjects)}>
             <KanbanSquare className="mr-2 h-4 w-4" />
             <span>Projekte</span>
-            <CommandShortcut>⌃P</CommandShortcut>
+            <CommandShortcut>⌘P</CommandShortcut>
           </CommandItem>
         </CommandGroup>
 
         <CommandSeparator />
 
-        {/* Aktionen */}
         <CommandGroup heading="Aktionen">
-          <CommandItem onSelect={() => runCommand(() => {
-            // Fokus auf OmniBar setzen (DOM Hack, aber effizient)
-            const input = document.querySelector('input[placeholder*="Eingabe"]') as HTMLInputElement;
-            if (input) {
-              input.focus();
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else {
-              // Wenn wir nicht auf der Home Page sind, geh erst hin
-              router.push("/");
-              setTimeout(() => {
-                const inputAfterNav = document.querySelector('input[placeholder*="Eingabe"]') as HTMLInputElement;
-                if (inputAfterNav) inputAfterNav.focus();
-              }, 100);
-            }
-          })}>
+          <CommandItem onSelect={() => runCommand(actions.newItem)}>
             <Plus className="mr-2 h-4 w-4" />
-            <span>Neuen Eintrag erstellen...</span>
-            <CommandShortcut>⌃N</CommandShortcut>
+            <span>Neuer Eintrag...</span>
+            <CommandShortcut>⌘N</CommandShortcut>
           </CommandItem>
 
-          <CommandItem onSelect={() => runCommand(() => {
-            // Simulierter Klick auf Search Button (Filter löschen)
-            // In einer echten App würden wir Global State nutzen
-            router.push("/");
-          })}>
+          <CommandItem onSelect={() => runCommand(actions.resetFilter)}>
             <Search className="mr-2 h-4 w-4" />
-            <span>Alle Filter zurücksetzen</span>
+            <span>Filter zurücksetzen</span>
           </CommandItem>
         </CommandGroup>
 
         <CommandSeparator />
 
-        {/* Dynamische Projekte / Tags */}
-        {knownTags.length > 0 && (
-          <CommandGroup heading="Projekte filtern">
-            {knownTags.map(tag => (
-              <CommandItem key={tag} onSelect={() => runCommand(() => {
-                // Da wir State nicht global haben, nutzen wir URL params oder simple Navigation
-                // Wir navigieren zur Projektseite und könnten (theoretisch) filtern
-                // Für jetzt: Einfach nur zur Projektseite
-                router.push("/projects");
-                // TODO: Implementiere URL Query Params für Filter (z.B. /projects?tag=arbeit)
-              })}>
-                <Hash className="mr-2 h-4 w-4 text-muted-foreground" />
-                <span>{tag}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
-
-        <CommandSeparator />
-
-        {/* Theme Switcher */}
         <CommandGroup heading="Erscheinungsbild">
           <CommandItem onSelect={() => runCommand(() => setTheme("light"))}>
             <Sun className="mr-2 h-4 w-4" />
@@ -156,6 +129,15 @@ export function CommandMenu() {
           <CommandItem onSelect={() => runCommand(() => setTheme("system"))}>
             <Laptop className="mr-2 h-4 w-4" />
             <span>System</span>
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        <CommandGroup heading="Account">
+          <CommandItem onSelect={() => runCommand(actions.logout)}>
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Abmelden</span>
           </CommandItem>
         </CommandGroup>
 
