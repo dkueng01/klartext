@@ -3,8 +3,11 @@
 import { Item } from "@/lib/schema";
 import { format, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
-import { CheckCircle2, Circle, StickyNote, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, StickyNote, Trash2, Calendar, Clock, Flag, AlertCircle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface JournalViewProps {
   items: Item[];
@@ -15,11 +18,25 @@ interface JournalViewProps {
 }
 
 export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: JournalViewProps) {
-  if (items.length === 0) return <div className="text-center text-muted-foreground mt-10">Keine Einträge.</div>;
+  if (items.length === 0) return (
+    <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
+      <StickyNote className="w-10 h-10 mb-2" />
+      <p className="text-sm">Keine Einträge.</p>
+    </div>
+  );
+
+  const getPrioIcon = (prio: string) => {
+    switch (prio) {
+      case 'high': return <Flag size={10} className="text-red-600 fill-red-100" />;
+      case 'medium': return <Flag size={10} className="text-orange-500" />;
+      case 'low': return <Flag size={10} className="text-blue-500" />;
+      default: return null;
+    }
+  };
 
   return (
-    <ScrollArea className="h-full p-4">
-      <div className="space-y-3 pb-10">
+    <ScrollArea className="h-full px-2"> {/* Weniger Padding außen */}
+      <div className="pb-10 pt-2 space-y-2">
         {items.map((item, index) => {
           const isToday = isSameDay(item.createdAt, new Date());
           const prevItem = items[index - 1];
@@ -27,53 +44,116 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
 
           return (
             <div key={item.id}>
+
+              {/* --- DATUM SEPARATOR (Dezent) --- */}
               {showSeparator && (
-                <div className="flex items-center py-6">
-                  <div className="flex-grow h-px bg-border/60"></div>
-                  <span className="flex-shrink-0 mx-4 text-xs font-medium text-muted-foreground bg-background/50 px-3 py-1 rounded-full border shadow-sm">
-                    {isToday ? "Heute" : format(item.createdAt, "EEEE, d. MMMM", { locale: de })}
-                  </span>
-                  <div className="flex-grow h-px bg-border/60"></div>
+                <div className="sticky top-0 z-10 py-3 flex items-center justify-center pointer-events-none">
+                  <div className="bg-background/95 border shadow-sm px-3 py-0.5 rounded-full flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                    {isToday ? "Heute" : format(item.createdAt, "EEE, d. MMM", { locale: de })}
+                  </div>
                 </div>
               )}
+
+              {/* --- CARD (Kompakt) --- */}
               <div
                 onClick={() => onEdit(item)}
-                className="group cursor-pointer relative bg-background border rounded-lg p-3 shadow-sm hover:shadow-md hover:border-primary/40 transition-all"
+                className={cn(
+                  "group relative flex items-start gap-3 p-3 rounded-lg border bg-card transition-all duration-200",
+                  "hover:border-primary/30 cursor-pointer",
+                  item.status === 'done' && "opacity-60 bg-muted/20 border-transparent"
+                )}
               >
-                <button onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} className="absolute right-2 top-2 text-muted-foreground/20 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
 
-                <div className="flex items-start gap-3">
-                  <div className="mt-1">
-                    {item.type === 'todo' ? (
-                      <div onClick={(e) => { e.stopPropagation(); onToggle(item.id); }}>
-                        {item.status === 'done'
-                          ? <CheckCircle2 size={18} className="text-green-600" />
-                          : <Circle size={18} className="text-muted-foreground hover:text-primary" />
-                        }
-                      </div>
-                    ) : (
-                      <div className="w-4 h-4 rounded-full bg-orange-100 flex items-center justify-center"><StickyNote size={10} className="text-orange-500" /></div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className={`block text-sm font-medium truncate ${item.status === 'done' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                {/* ICON */}
+                <div className="pt-0.5 shrink-0">
+                  {item.type === 'todo' ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onToggle(item.id); }}
+                      className="text-muted-foreground hover:text-primary transition-colors focus:outline-none"
+                    >
+                      {item.status === 'done'
+                        ? <CheckCircle2 size={18} className="text-green-600" />
+                        : <Circle size={18} strokeWidth={2} />
+                      }
+                    </button>
+                  ) : (
+                    <StickyNote size={18} className="text-orange-400 mt-0.5" />
+                  )}
+                </div>
+
+                {/* INHALT */}
+                <div className="flex-1 min-w-0">
+
+                  {/* Header: Title + Time */}
+                  <div className="flex justify-between items-start gap-2 pr-6">
+                    <span className={cn(
+                      "text-sm font-medium leading-tight block break-words",
+                      item.status === 'done' && "line-through text-muted-foreground"
+                    )}>
                       {item.content}
                     </span>
-                    {item.description && <p className="text-xs text-muted-foreground mt-1 truncate">{item.description}</p>}
+                  </div>
 
-                    <div className="flex gap-2 mt-2 flex-wrap items-center">
-                      <span className="text-[10px] text-muted-foreground font-mono">{format(item.createdAt, "HH:mm")}</span>
-                      {item.tags.map(tag => (
-                        <span
-                          key={tag}
-                          onClick={(e) => { e.stopPropagation(); onTagClick(tag); }}
-                          className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 hover:bg-blue-100"
-                        >#{tag}</span>
-                      ))}
-                      {item.status === 'in_progress' && <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 rounded">In Arbeit</span>}
-                    </div>
+                  {/* Description Preview (Einzeilig) */}
+                  {item.description && (
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                      {item.description}
+                    </p>
+                  )}
+
+                  {/* Meta Row: Tags, Prio, Due Date */}
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
+
+                    {/* Time (Minimalistisch) */}
+                    <span className="text-[10px] text-muted-foreground/50 font-mono">
+                      {format(item.createdAt, "HH:mm")}
+                    </span>
+
+                    {/* Tags */}
+                    {item.tags.map(tag => (
+                      <Badge
+                        key={tag}
+                        variant="secondary"
+                        onClick={(e) => { e.stopPropagation(); onTagClick(tag); }}
+                        className="text-[9px] px-1 h-4 font-normal text-muted-foreground bg-muted hover:text-primary hover:bg-primary/10 border-0 cursor-pointer"
+                      >
+                        #{tag}
+                      </Badge>
+                    ))}
+
+                    {/* Prio Indicator */}
+                    {item.priority !== 'none' && !item.isCompleted && (
+                      <div className="flex items-center" title={`Priorität: ${item.priority}`}>
+                        {getPrioIcon(item.priority)}
+                      </div>
+                    )}
+
+                    {/* Due Date Indicator */}
+                    {item.dueDate && !item.isCompleted && (
+                      <span className={cn(
+                        "flex items-center gap-0.5 text-[9px] px-1 rounded border",
+                        new Date(item.dueDate) < new Date() ? "text-red-600 bg-red-50 border-red-100" : "text-green-600 bg-green-50 border-green-100"
+                      )}>
+                        <Calendar size={8} />
+                        {format(new Date(item.dueDate), "dd.MM")}
+                      </span>
+                    )}
+
                   </div>
                 </div>
+
+                {/* DELETE BUTTON (Klein & Dezent) */}
+                <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10"
+                    onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+                  >
+                    <Trash2 size={12} />
+                  </Button>
+                </div>
+
               </div>
             </div>
           );

@@ -2,15 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { Item, ItemStatus } from "@/lib/schema";
-import { Dialog, DialogContent, DialogFooter, DialogTitle, DialogHeader } from "@/components/ui/dialog"; // DialogHeader/Title importieren
+import { Dialog, DialogContent, DialogFooter, DialogTitle, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Calendar as CalendarIcon, Flag, Clock, Tag } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Trash2, Calendar as CalendarIcon, Flag, Clock, Tag, Plus, X, Circle, Hash } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface EditItemDialogProps {
   item: Item | null;
@@ -22,6 +25,8 @@ interface EditItemDialogProps {
 
 export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditItemDialogProps) {
   const [formData, setFormData] = useState<Item | null>(null);
+  const [newTag, setNewTag] = useState("");
+  const [showTagInput, setShowTagInput] = useState(false);
 
   useEffect(() => {
     if (item) {
@@ -43,13 +48,29 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
     }
   };
 
-  // Helper für Prio Farben
+  const addTag = () => {
+    if (newTag.trim() && formData) {
+      const tag = newTag.replace("#", "").trim();
+      if (!formData.tags.includes(tag)) {
+        setFormData({ ...formData, tags: [...formData.tags, tag] });
+      }
+      setNewTag("");
+      setShowTagInput(false);
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    if (formData) {
+      setFormData({ ...formData, tags: formData.tags.filter(t => t !== tagToRemove) });
+    }
+  };
+
   const getPrioColor = (prio: string) => {
     switch (prio) {
-      case 'high': return 'text-red-600 bg-red-50 hover:bg-red-100 border-red-200';
-      case 'medium': return 'text-orange-600 bg-orange-50 hover:bg-orange-100 border-orange-200';
-      case 'low': return 'text-blue-600 bg-blue-50 hover:bg-blue-100 border-blue-200';
-      default: return 'text-muted-foreground bg-background';
+      case 'high': return 'text-red-600';
+      case 'medium': return 'text-orange-600';
+      case 'low': return 'text-blue-600';
+      default: return 'text-muted-foreground';
     }
   };
 
@@ -57,48 +78,48 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden block">
+      <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-visible block">
 
+        {/* HEADER */}
         <DialogHeader className="px-6 pt-6 pb-2">
           <div className="flex items-center justify-start gap-2">
             <Badge variant={formData.type === 'todo' ? 'default' : 'secondary'} className="uppercase text-[10px] tracking-wider font-semibold">
               {formData.type}
             </Badge>
-            <DialogTitle className="text-sm font-normal text-muted-foreground flex items-center gap-2">
-              <Clock size={14} />
-              {formData.createdAt && format(new Date(formData.createdAt), "d. MMMM yyyy, HH:mm", { locale: de })}
+            <DialogTitle className="text-xs font-normal text-muted-foreground flex items-center gap-2">
+              <Clock size={12} />
+              {formData.createdAt && format(new Date(formData.createdAt), "d. MMM yyyy, HH:mm", { locale: de })}
             </DialogTitle>
           </div>
         </DialogHeader>
 
-        {/* MAIN CONTENT AREA */}
         <div className="px-6 pb-6">
 
-          {/* 1. RIESIGER TITEL (Wie in Notion) */}
-          <div className="my-4">
+          {/* TITLE INPUT */}
+          <div className="my-3">
             <Input
-              className="text-2xl font-bold border-0 px-0 shadow-none focus-visible:ring-0 h-auto placeholder:text-muted-foreground/40 bg-transparent"
+              className="text-xl font-bold border-0 px-0 shadow-none focus-visible:ring-0 h-auto placeholder:text-muted-foreground/40 bg-transparent"
               value={formData.content}
-              placeholder="Titel der Aufgabe..."
+              placeholder="Titel..."
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
             />
           </div>
 
-          {/* 2. META DATEN BLOCK (Grauer Hintergrund) */}
-          <div className="bg-muted/30 rounded-xl p-4 border grid grid-cols-2 gap-4 mb-6">
+          {/* PROPERTIES LIST (Vertical Layout) */}
+          <div className="space-y-1 mb-6">
 
-            {/* Linke Spalte: Status (nur Todo) oder Tags */}
-            <div className="space-y-3">
-              {formData.type === 'todo' && (
-                <div>
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">Status</label>
+            {/* 1. STATUS ROW */}
+            {formData.type === 'todo' && (
+              <div className="flex items-center h-9">
+                <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium">
+                  <Circle size={14} /> Status
+                </div>
+                <div className="flex-1">
                   <Select
                     value={formData.status}
-                    onValueChange={(val: any) =>
-                      setFormData({ ...formData, status: val, isCompleted: val === 'done' })
-                    }
+                    onValueChange={(val: any) => setFormData({ ...formData, status: val, isCompleted: val === 'done' })}
                   >
-                    <SelectTrigger className="h-8 bg-background text-xs w-full">
+                    <SelectTrigger className="h-7 w-auto min-w-[140px] border-0 shadow-none hover:bg-muted/50 px-2 text-xs -ml-2">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -108,38 +129,21 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-
-              {/* Tags hier rein, wenn Platz ist */}
-              <div>
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block flex items-center gap-1">
-                  <Tag size={10} /> Projekte / Tags
-                </label>
-                {formData.tags.length > 0 ? (
-                  <div className="flex gap-1.5 flex-wrap">
-                    {formData.tags.map(tag => (
-                      <Badge key={tag} variant="outline" className="font-normal text-[10px] px-2 bg-background">#{tag}</Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-xs text-muted-foreground italic pl-1">Keine Tags</span>
-                )}
               </div>
-            </div>
+            )}
 
-            {/* Rechte Spalte: Prio & Datum */}
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">Priorität</label>
+            {/* 2. PRIORITY ROW */}
+            <div className="flex items-center h-9">
+              <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium">
+                <Flag size={14} /> Priorität
+              </div>
+              <div className="flex-1">
                 <Select
                   value={formData.priority}
                   onValueChange={(val: any) => setFormData({ ...formData, priority: val })}
                 >
-                  <SelectTrigger className={`h-8 text-xs w-full ${getPrioColor(formData.priority)}`}>
-                    <div className="flex items-center gap-2">
-                      <Flag size={12} />
-                      <SelectValue />
-                    </div>
+                  <SelectTrigger className={cn("h-7 w-auto min-w-[140px] border-0 shadow-none hover:bg-muted/50 px-2 text-xs -ml-2", getPrioColor(formData.priority))}>
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Keine</SelectItem>
@@ -149,25 +153,80 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
-              {formData.dueDate && (
-                <div>
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">Fällig am</label>
-                  <div className="flex items-center h-8 px-3 border rounded-md text-xs bg-background text-foreground">
-                    <CalendarIcon size={12} className="mr-2 text-muted-foreground" />
-                    {format(new Date(formData.dueDate), "dd.MM.yyyy")}
-                  </div>
-                </div>
-              )}
+            {/* 3. DATE ROW */}
+            <div className="flex items-center h-9">
+              <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium">
+                <CalendarIcon size={14} /> Datum
+              </div>
+              <div className="flex-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"ghost"}
+                      className={cn(
+                        "h-7 w-auto min-w-[140px] justify-start text-left font-normal text-xs px-2 -ml-2 hover:bg-muted/50",
+                        !formData.dueDate && "text-muted-foreground"
+                      )}
+                    >
+                      {formData.dueDate ? format(new Date(formData.dueDate), "PPP", { locale: de }) : <span>Kein Datum</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.dueDate ? new Date(formData.dueDate) : undefined}
+                      onSelect={(date) => setFormData({ ...formData, dueDate: date || null })}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {/* 4. TAGS ROW */}
+            <div className="flex items-center min-h-[36px] py-1">
+              <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium self-start pt-1.5">
+                <Hash size={14} /> Tags
+              </div>
+              <div className="flex-1 flex flex-wrap gap-1.5 items-center">
+                {formData.tags.map(tag => (
+                  <Badge key={tag} variant="secondary" className="pl-2 pr-1 h-6 font-normal text-xs flex items-center gap-1 bg-muted hover:bg-muted/80">
+                    {tag}
+                    <button onClick={() => removeTag(tag)} className="text-muted-foreground hover:text-red-500 rounded-full p-0.5 ml-0.5">
+                      <X size={10} />
+                    </button>
+                  </Badge>
+                ))}
+
+                {showTagInput ? (
+                  <Input
+                    autoFocus
+                    className="h-6 w-24 text-xs"
+                    placeholder="Tag..."
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') addTag();
+                      if (e.key === 'Escape') setShowTagInput(false);
+                    }}
+                    onBlur={addTag}
+                  />
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={() => setShowTagInput(true)} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary rounded-full">
+                    <Plus size={14} />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* 3. BESCHREIBUNG (Clean) */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Beschreibung</label>
+          {/* DESCRIPTION */}
+          <div className="space-y-2 pt-4 border-t">
             <Textarea
               className="min-h-[150px] resize-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 text-sm leading-relaxed"
-              placeholder="Schreibe hier deine Notizen..."
+              placeholder="Notizen hinzufügen..."
               value={formData.description || ""}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
@@ -187,8 +246,8 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
           </Button>
 
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8">Abbrechen</Button>
-            <Button onClick={handleSave} size="sm" className="h-8">Speichern</Button>
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 text-xs">Abbrechen</Button>
+            <Button onClick={handleSave} size="sm" className="h-8 text-xs">Fertig</Button>
           </div>
         </DialogFooter>
 
