@@ -4,6 +4,7 @@ import { stackClientApp } from "../stack/client";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Analytics } from "@vercel/analytics/next"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,11 +37,11 @@ export default function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              {/* Hier ist KEINE Navigation mehr. Nur die Kinder. */}
               {children}
             </ThemeProvider>
           </StackTheme>
         </StackProvider>
+        <Analytics />
       </body>
     </html>
   );
