@@ -65,7 +65,8 @@ export default function Home() {
       status: "todo",
       isCompleted: false,
       createdAt: new Date(),
-      description: ""
+      description: "",
+      images: [],
     });
   };
 
