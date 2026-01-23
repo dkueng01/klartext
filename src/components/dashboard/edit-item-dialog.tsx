@@ -11,11 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, Calendar as CalendarIcon, Flag, Clock, Plus, X, Circle, Hash, ImageIcon, ExternalLink } from "lucide-react";
+import { Trash2, Calendar as CalendarIcon, Flag, Clock, Plus, X, Circle, Hash, ImageIcon, ExternalLink, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ImageUpload } from "../ui/image-upload";
+import { deleteImageFromCloudinary } from "@/actions/cloudinary";
 
 interface EditItemDialogProps {
   item: Item | null;
@@ -29,6 +30,8 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
   const [formData, setFormData] = useState<Item | null>(null);
   const [newTag, setNewTag] = useState("");
   const [showTagInput, setShowTagInput] = useState(false);
+  const [deletingImages, setDeletingImages] = useState<string[]>([]);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   useEffect(() => {
     if (item) {
@@ -67,9 +70,41 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
     }
   };
 
-  const removeImage = (urlToRemove: string) => {
-    if (formData) {
-      setFormData({ ...formData, images: formData.images.filter(url => url !== urlToRemove) });
+  const handleImageUpload = (newUrl: string) => {
+    if (!formData) return;
+
+    const updatedImages = [...formData.images, newUrl];
+    const updatedItem = { ...formData, images: updatedImages };
+
+    // 1. UI Update sofort
+    setFormData(updatedItem);
+
+    // 2. DB Update sofort (Auto-Save)
+    onSave(updatedItem);
+  };
+
+  const handleRemoveImage = async (urlToRemove: string) => {
+    if (!formData) return;
+    setIsProcessingImage(true);
+
+    try {
+      // 1. Cloudinary Delete aufrufen (Server Action)
+      await deleteImageFromCloudinary(urlToRemove);
+
+      // 2. Lokalen State berechnen
+      const updatedImages = formData.images.filter(url => url !== urlToRemove);
+      const updatedItem = { ...formData, images: updatedImages };
+
+      // 3. Aus Form State entfernen
+      setFormData(updatedItem);
+
+      // 4. DB Update sofort (Auto-Save)
+      onSave(updatedItem);
+    } catch (error) {
+      console.error("Fehler beim Löschen des Bildes:", error);
+      alert("Bild konnte nicht vollständig gelöscht werden.");
+    } finally {
+      setIsProcessingImage(false);
     }
   };
 
@@ -86,7 +121,7 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      {/* 
+      {/*
         Changes made here:
         1. Added h-[85vh] to force a height on the dialog.
         2. Added flex flex-col to organize header/body/footer.
@@ -106,8 +141,8 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
           </div>
         </DialogHeader>
 
-        {/* 
-          SCROLL AREA 
+        {/*
+          SCROLL AREA
           1. flex-1 allows it to take all remaining space.
           2. min-h-0 is CRITICAL in flexbox to allow scrolling inside nested flex containers.
         */}
@@ -212,34 +247,37 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
                     <ImageIcon size={12} /> Anhänge ({formData.images?.length || 0})
                   </label>
+                  {isProcessingImage && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
                 </div>
 
                 <div className="space-y-3">
                   {/* Gallery */}
                   {formData.images && formData.images.length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {formData.images.map((url) => (
-                        <div key={url} className="relative w-16 h-16 rounded-md overflow-hidden border bg-muted group">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); removeImage(url); }}
-                            className="absolute top-0.5 right-0.5 z-10 bg-black/60 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-500 transition-all"
-                          >
-                            <X size={10} />
-                          </button>
-                          <a href={url} target="_blank" rel="noopener noreferrer" className="block w-full h-full cursor-pointer relative">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={url} alt="Attachment" className="object-cover w-full h-full hover:opacity-80 transition-opacity" />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
-                              <ExternalLink size={12} className="text-white drop-shadow-md" />
-                            </div>
-                          </a>
-                        </div>
-                      ))}
+                      {formData.images.map((url) => {
+                        return (
+                          <div key={url} className={cn("relative w-16 h-16 rounded-md overflow-hidden border bg-muted group", isProcessingImage && "opacity-50 pointer-events-none")}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleRemoveImage(url); }}
+                              className="absolute top-0.5 right-0.5 z-10 bg-black/60 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-500 transition-all"
+                            >
+                              <X size={10} />
+                            </button>
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="block w-full h-full cursor-pointer relative">
+                              <img src={url} alt="Attachment" className="object-cover w-full h-full hover:opacity-80 transition-opacity" />
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
+                                <ExternalLink size={12} className="text-white drop-shadow-md" />
+                              </div>
+                            </a>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
 
                   <ImageUpload
-                    onUpload={(url) => setFormData({ ...formData, images: [...formData.images, url] })}
+                    disabled={isProcessingImage}
+                    onUpload={handleImageUpload}
                   />
                 </div>
               </div>
