@@ -4,7 +4,7 @@ export interface Item {
   id: string;
   content: string;
   description?: string;
-  imageUrl?: string;
+  images: string[];
   type: "todo" | "note";
   status: ItemStatus;
   isCompleted: boolean;

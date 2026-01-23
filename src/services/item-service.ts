@@ -1,5 +1,5 @@
 import { getApiClient } from "@/lib/api-client";
-import { Item } from "@/lib/schema"; // Your Zod schema/types
+import { Item } from "@/lib/schema";
 import { CurrentUser } from "@stackframe/stack";
 import { UserService } from "./user-service";
 
@@ -14,12 +14,12 @@ export const ItemService = {
 
     if (error) throw error;
 
-    // Map DB columns (snake_case) to Frontend types (camelCase)
     return data.map((row: any) => ({
       ...row,
       dueDate: row.due_date ? new Date(row.due_date) : null,
       createdAt: new Date(row.created_at),
-      isCompleted: row.status === 'done' // Helper for legacy/UI logic
+      isCompleted: row.status === 'done',
+      images: row.images || []
     })) as Item[];
   },
 
@@ -37,7 +37,8 @@ export const ItemService = {
         status: item.status,
         tags: item.tags,
         priority: item.priority,
-        due_date: item.dueDate ? item.dueDate.toISOString() : null
+        due_date: item.dueDate ? item.dueDate.toISOString() : null,
+        images: item.images || []
       })
       .select()
       .single();
@@ -64,6 +65,7 @@ export const ItemService = {
     if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
     if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
     if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate ? updates.dueDate.toISOString() : null;
+    if (updates.images !== undefined) dbUpdates.images = updates.images;
 
     const { data, error } = await pg
       .from("items")

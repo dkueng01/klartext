@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 interface JournalViewProps {
   items: Item[];
@@ -18,6 +19,10 @@ interface JournalViewProps {
 }
 
 export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: JournalViewProps) {
+  const [viewerState, setViewerState] = useState<{ open: boolean, images: string[], index: number }>({
+    open: false, images: [], index: 0
+  });
+
   if (items.length === 0) return (
     <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
       <StickyNote className="w-10 h-10 mb-2" />
@@ -128,10 +133,11 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
                       </span>
                     )}
 
-                    {item.imageUrl && (
-                      <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground shrink-0">
+                    {item.images && item.images.length > 0 && (
+                      <Badge variant="secondary" className="px-1.5 h-4 font-normal text-[9px] text-muted-foreground bg-muted hover:bg-primary/10 border-0 flex items-center gap-1 shrink-0">
                         <ImageIcon size={10} />
-                      </span>
+                        {item.images.length}
+                      </Badge>
                     )}
                   </div>
                 </div>
