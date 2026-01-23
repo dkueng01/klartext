@@ -8,6 +8,7 @@ export const itemSchema = z.object({
   id: z.string(),
   content: z.string().min(1),
   description: z.string().optional(),
+  imageUrl: z.string().nullable().optional(),
   type: z.enum(["todo", "note"]),
   status: z.enum(["todo", "in_progress", "done"]),
   isCompleted: z.boolean(),

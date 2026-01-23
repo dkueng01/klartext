@@ -3,7 +3,7 @@
 import { Item } from "@/lib/schema";
 import { format, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
-import { CheckCircle2, Circle, StickyNote, Trash2, Calendar, Clock, Flag, AlertCircle } from "lucide-react";
+import { CheckCircle2, Circle, StickyNote, Trash2, Calendar, Flag, ImageIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,17 +35,16 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
   };
 
   return (
-    <ScrollArea className="h-full px-2"> {/* Weniger Padding außen */}
-      <div className="pb-10 pt-2 space-y-2">
+    <ScrollArea className="h-full px-2 w-full">
+      <div className="pb-10 pt-2 space-y-2 max-w-full">
         {items.map((item, index) => {
           const isToday = isSameDay(item.createdAt, new Date());
           const prevItem = items[index - 1];
           const showSeparator = !prevItem || !isSameDay(item.createdAt, prevItem.createdAt);
 
           return (
-            <div key={item.id}>
+            <div key={item.id} className="w-full max-w-full">
 
-              {/* --- DATUM SEPARATOR (Dezent) --- */}
               {showSeparator && (
                 <div className="sticky top-0 z-10 py-3 flex items-center justify-center pointer-events-none">
                   <div className="bg-background/95 border shadow-sm px-3 py-0.5 rounded-full flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
@@ -54,17 +53,15 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
                 </div>
               )}
 
-              {/* --- CARD (Kompakt) --- */}
               <div
                 onClick={() => onEdit(item)}
                 className={cn(
                   "group relative flex items-start gap-3 p-3 rounded-lg border bg-card transition-all duration-200",
-                  "hover:border-primary/30 cursor-pointer",
+                  "hover:border-primary/30 cursor-pointer w-full max-w-full overflow-hidden",
                   item.status === 'done' && "opacity-60 bg-muted/20 border-transparent"
                 )}
               >
 
-                {/* ICON */}
                 <div className="pt-0.5 shrink-0">
                   {item.type === 'todo' ? (
                     <button
@@ -81,57 +78,49 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
                   )}
                 </div>
 
-                {/* INHALT */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 grid gap-1">
 
-                  {/* Header: Title + Time */}
-                  <div className="flex justify-between items-start gap-2 pr-6">
+                  <div className="pr-6">
                     <span className={cn(
-                      "text-sm font-medium leading-tight block break-words",
+                      "text-sm font-medium leading-tight block truncate",
                       item.status === 'done' && "line-through text-muted-foreground"
-                    )}>
+                    )} title={item.content}>
                       {item.content}
                     </span>
                   </div>
 
-                  {/* Description Preview (Einzeilig) */}
                   {item.description && (
-                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                    <p className="text-[11px] text-muted-foreground truncate">
                       {item.description}
                     </p>
                   )}
 
-                  {/* Meta Row: Tags, Prio, Due Date */}
-                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
 
-                    {/* Time (Minimalistisch) */}
-                    <span className="text-[10px] text-muted-foreground/50 font-mono">
+                    <span className="text-[10px] text-muted-foreground/50 font-mono shrink-0">
                       {format(item.createdAt, "HH:mm")}
                     </span>
 
-                    {/* Tags */}
                     {item.tags.map(tag => (
                       <Badge
                         key={tag}
                         variant="secondary"
                         onClick={(e) => { e.stopPropagation(); onTagClick(tag); }}
-                        className="text-[9px] px-1 h-4 font-normal text-muted-foreground bg-muted hover:text-primary hover:bg-primary/10 border-0 cursor-pointer"
+                        className="text-[9px] px-1 h-4 font-normal text-muted-foreground bg-muted hover:text-primary hover:bg-primary/10 border-0 cursor-pointer shrink-0"
                       >
                         #{tag}
                       </Badge>
                     ))}
 
-                    {/* Prio Indicator */}
                     {item.priority !== 'none' && !item.isCompleted && (
-                      <div className="flex items-center" title={`Priorität: ${item.priority}`}>
+                      <div className="flex items-center shrink-0">
                         {getPrioIcon(item.priority)}
                       </div>
                     )}
 
-                    {/* Due Date Indicator */}
                     {item.dueDate && !item.isCompleted && (
                       <span className={cn(
-                        "flex items-center gap-0.5 text-[9px] px-1 rounded border",
+                        "flex items-center gap-0.5 text-[9px] px-1 rounded border shrink-0",
                         new Date(item.dueDate) < new Date() ? "text-red-600 bg-red-50 border-red-100" : "text-green-600 bg-green-50 border-green-100"
                       )}>
                         <Calendar size={8} />
@@ -139,10 +128,14 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
                       </span>
                     )}
 
+                    {item.imageUrl && (
+                      <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground shrink-0">
+                        <ImageIcon size={10} />
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* DELETE BUTTON (Klein & Dezent) */}
                 <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     size="icon"
