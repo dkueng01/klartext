@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Calendar as CalendarIcon, Flag, Clock, Plus, X, Circle, Hash, ImageIcon, ExternalLink, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -121,12 +120,7 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      {/*
-        Changes made here:
-        1. Added h-[85vh] to force a height on the dialog.
-        2. Added flex flex-col to organize header/body/footer.
-      */}
-      <DialogContent className="sm:max-w-[600px] h-[85vh] p-0 gap-0 overflow-hidden flex flex-col outline-none">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col outline-none">
 
         {/* HEADER - No changes needed, shrink-0 prevents it from collapsing */}
         <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
@@ -141,149 +135,142 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
           </div>
         </DialogHeader>
 
-        {/*
-          SCROLL AREA
-          1. flex-1 allows it to take all remaining space.
-          2. min-h-0 is CRITICAL in flexbox to allow scrolling inside nested flex containers.
-        */}
-        <div className="flex-1 min-h-0 relative">
-          <ScrollArea className="h-full w-full">
-            <div className="px-6 pb-6">
+        <div className="flex-1 overflow-hidden overflow-y-auto relative flex flex-col">
+          <div className="px-6 pb-6">
 
-              {/* TITLE */}
-              <div className="my-3">
-                <Input
-                  className="text-xl font-bold border-0 px-0 shadow-none focus-visible:ring-0 h-auto bg-transparent"
-                  value={formData.content}
-                  placeholder="Titel..."
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                />
-              </div>
+            {/* TITLE */}
+            <div className="my-3">
+              <Input
+                className="text-xl font-bold border-0 px-0 shadow-none focus-visible:ring-0 h-auto bg-transparent"
+                value={formData.content}
+                placeholder="Titel..."
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+              />
+            </div>
 
-              {/* PROPERTIES LIST */}
-              <div className="space-y-1 mb-6">
-                {/* Status */}
-                {formData.type === 'todo' && (
-                  <div className="flex items-center h-9">
-                    <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium"><Circle size={14} /> Status</div>
-                    <div className="flex-1">
-                      <Select value={formData.status} onValueChange={(val: any) => setFormData({ ...formData, status: val, isCompleted: val === 'done' })}>
-                        <SelectTrigger className="h-7 w-auto min-w-[140px] border-0 shadow-none hover:bg-muted/50 px-2 text-xs -ml-2"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="todo">Zu erledigen</SelectItem>
-                          <SelectItem value="in_progress">In Arbeit</SelectItem>
-                          <SelectItem value="done">Erledigt</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-
-                {/* Priority */}
+            {/* PROPERTIES LIST */}
+            <div className="space-y-1 mb-6">
+              {/* Status */}
+              {formData.type === 'todo' && (
                 <div className="flex items-center h-9">
-                  <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium"><Flag size={14} /> Priorität</div>
+                  <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium"><Circle size={14} /> Status</div>
                   <div className="flex-1">
-                    <Select value={formData.priority} onValueChange={(val: any) => setFormData({ ...formData, priority: val })}>
-                      <SelectTrigger className={cn("h-7 w-auto min-w-[140px] border-0 shadow-none hover:bg-muted/50 px-2 text-xs -ml-2", getPrioColor(formData.priority))}><SelectValue /></SelectTrigger>
+                    <Select value={formData.status} onValueChange={(val: any) => setFormData({ ...formData, status: val, isCompleted: val === 'done' })}>
+                      <SelectTrigger className="h-7 w-auto min-w-[140px] border-0 shadow-none hover:bg-muted/50 px-2 text-xs -ml-2"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Keine</SelectItem>
-                        <SelectItem value="low">Niedrig</SelectItem>
-                        <SelectItem value="medium">Mittel</SelectItem>
-                        <SelectItem value="high">Hoch</SelectItem>
+                        <SelectItem value="todo">Zu erledigen</SelectItem>
+                        <SelectItem value="in_progress">In Arbeit</SelectItem>
+                        <SelectItem value="done">Erledigt</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
+              )}
 
-                {/* Date */}
-                <div className="flex items-center h-9">
-                  <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium"><CalendarIcon size={14} /> Datum</div>
-                  <div className="flex-1">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant={"ghost"} className={cn("h-7 w-auto min-w-[140px] justify-start text-left font-normal text-xs px-2 -ml-2 hover:bg-muted/50", !formData.dueDate && "text-muted-foreground")}>
-                          {formData.dueDate ? format(new Date(formData.dueDate), "PPP", { locale: de }) : <span>Kein Datum</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={formData.dueDate ? new Date(formData.dueDate) : undefined} onSelect={(date) => setFormData({ ...formData, dueDate: date || null })} initialFocus />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                {/* Tags */}
-                <div className="flex items-center min-h-[36px] py-1">
-                  <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium self-start pt-1.5"><Hash size={14} /> Tags</div>
-                  <div className="flex-1 flex flex-wrap gap-1.5 items-center">
-                    {formData.tags.map(tag => (
-                      <Badge key={tag} variant="secondary" className="pl-2 pr-1 h-6 font-normal text-xs flex items-center gap-1 bg-muted hover:bg-muted/80">
-                        {tag}
-                        <button onClick={() => removeTag(tag)} className="text-muted-foreground hover:text-red-500 rounded-full p-0.5 ml-0.5"><X size={10} /></button>
-                      </Badge>
-                    ))}
-                    {showTagInput ? (
-                      <Input autoFocus className="h-6 w-24 text-xs" placeholder="Tag..." value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addTag(); if (e.key === 'Escape') setShowTagInput(false); }} onBlur={addTag} />
-                    ) : (
-                      <Button variant="ghost" size="sm" onClick={() => setShowTagInput(true)} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary rounded-full"><Plus size={14} /></Button>
-                    )}
-                  </div>
+              {/* Priority */}
+              <div className="flex items-center h-9">
+                <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium"><Flag size={14} /> Priorität</div>
+                <div className="flex-1">
+                  <Select value={formData.priority} onValueChange={(val: any) => setFormData({ ...formData, priority: val })}>
+                    <SelectTrigger className={cn("h-7 w-auto min-w-[140px] border-0 shadow-none hover:bg-muted/50 px-2 text-xs -ml-2", getPrioColor(formData.priority))}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Keine</SelectItem>
+                      <SelectItem value="low">Niedrig</SelectItem>
+                      <SelectItem value="medium">Mittel</SelectItem>
+                      <SelectItem value="high">Hoch</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              {/* DESCRIPTION */}
-              <div className="space-y-2 pt-4 border-t">
-                <Textarea
-                  className="min-h-[150px] resize-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 text-sm leading-relaxed"
-                  placeholder="Notizen hinzufügen..."
-                  value={formData.description || ""}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              {/* Date */}
+              <div className="flex items-center h-9">
+                <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium"><CalendarIcon size={14} /> Datum</div>
+                <div className="flex-1">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant={"ghost"} className={cn("h-7 w-auto min-w-[140px] justify-start text-left font-normal text-xs px-2 -ml-2 hover:bg-muted/50", !formData.dueDate && "text-muted-foreground")}>
+                        {formData.dueDate ? format(new Date(formData.dueDate), "PPP", { locale: de }) : <span>Kein Datum</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={formData.dueDate ? new Date(formData.dueDate) : undefined} onSelect={(date) => setFormData({ ...formData, dueDate: date || null })} initialFocus />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="flex items-center min-h-[36px] py-1">
+                <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium self-start pt-1.5"><Hash size={14} /> Tags</div>
+                <div className="flex-1 flex flex-wrap gap-1.5 items-center">
+                  {formData.tags.map(tag => (
+                    <Badge key={tag} variant="secondary" className="pl-2 pr-1 h-6 font-normal text-xs flex items-center gap-1 bg-muted hover:bg-muted/80">
+                      {tag}
+                      <button onClick={() => removeTag(tag)} className="text-muted-foreground hover:text-red-500 rounded-full p-0.5 ml-0.5"><X size={10} /></button>
+                    </Badge>
+                  ))}
+                  {showTagInput ? (
+                    <Input autoFocus className="h-6 w-24 text-xs" placeholder="Tag..." value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addTag(); if (e.key === 'Escape') setShowTagInput(false); }} onBlur={addTag} />
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => setShowTagInput(true)} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary rounded-full"><Plus size={14} /></Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* DESCRIPTION */}
+            <div className="space-y-2 pt-4 border-t">
+              <Textarea
+                className="min-h-[150px] resize-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 text-sm leading-relaxed"
+                placeholder="Notizen hinzufügen..."
+                value={formData.description || ""}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
+
+            {/* IMAGES & UPLOAD */}
+            <div className="mt-4 border-t pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+                  <ImageIcon size={12} /> Anhänge ({formData.images?.length || 0})
+                </label>
+                {isProcessingImage && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+              </div>
+
+              <div className="space-y-3">
+                {/* Gallery */}
+                {formData.images && formData.images.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.images.map((url) => {
+                      return (
+                        <div key={url} className={cn("relative w-16 h-16 rounded-md overflow-hidden border bg-muted group", isProcessingImage && "opacity-50 pointer-events-none")}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleRemoveImage(url); }}
+                            className="absolute top-0.5 right-0.5 z-10 bg-black/60 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-500 transition-all"
+                          >
+                            <X size={10} />
+                          </button>
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="block w-full h-full cursor-pointer relative">
+                            <img src={url} alt="Attachment" className="object-cover w-full h-full hover:opacity-80 transition-opacity" />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
+                              <ExternalLink size={12} className="text-white drop-shadow-md" />
+                            </div>
+                          </a>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <ImageUpload
+                  disabled={isProcessingImage}
+                  onUpload={handleImageUpload}
                 />
               </div>
-
-              {/* IMAGES & UPLOAD */}
-              <div className="mt-4 border-t pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
-                    <ImageIcon size={12} /> Anhänge ({formData.images?.length || 0})
-                  </label>
-                  {isProcessingImage && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
-                </div>
-
-                <div className="space-y-3">
-                  {/* Gallery */}
-                  {formData.images && formData.images.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {formData.images.map((url) => {
-                        return (
-                          <div key={url} className={cn("relative w-16 h-16 rounded-md overflow-hidden border bg-muted group", isProcessingImage && "opacity-50 pointer-events-none")}>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleRemoveImage(url); }}
-                              className="absolute top-0.5 right-0.5 z-10 bg-black/60 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-500 transition-all"
-                            >
-                              <X size={10} />
-                            </button>
-                            <a href={url} target="_blank" rel="noopener noreferrer" className="block w-full h-full cursor-pointer relative">
-                              <img src={url} alt="Attachment" className="object-cover w-full h-full hover:opacity-80 transition-opacity" />
-                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
-                                <ExternalLink size={12} className="text-white drop-shadow-md" />
-                              </div>
-                            </a>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  <ImageUpload
-                    disabled={isProcessingImage}
-                    onUpload={handleImageUpload}
-                  />
-                </div>
-              </div>
-
             </div>
-          </ScrollArea>
+
+          </div>
         </div>
 
         {/* FOOTER */}
