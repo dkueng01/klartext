@@ -1,5 +1,5 @@
 import { getApiClient } from "@/lib/api-client";
-import { Item } from "@/lib/schema";
+import { createItemSchema, Item, updateItemSchema } from "@/lib/schema";
 import { CurrentUser } from "@stackframe/stack";
 import { UserService } from "./user-service";
 
@@ -24,6 +24,9 @@ export const ItemService = {
   },
 
   async create(user: CurrentUser, item: Partial<Item>): Promise<Item> {
+    // 1. Validation
+    const validated = createItemSchema.parse(item);
+
     await UserService.ensureUserExists(user);
     const pg = await getApiClient(user);
 
@@ -31,14 +34,14 @@ export const ItemService = {
       .from("items")
       .insert({
         user_id: user.id,
-        content: item.content,
-        description: item.description,
-        type: item.type,
-        status: item.status,
-        tags: item.tags,
-        priority: item.priority,
-        due_date: item.dueDate ? item.dueDate.toISOString() : null,
-        images: item.images || []
+        content: validated.content, // use validated data
+        description: validated.description,
+        type: validated.type,
+        status: validated.status,
+        tags: validated.tags,
+        priority: validated.priority,
+        due_date: validated.dueDate ? validated.dueDate.toISOString() : null,
+        images: validated.images || []
       })
       .select()
       .single();
@@ -54,18 +57,21 @@ export const ItemService = {
   },
 
   async update(user: CurrentUser, id: string, updates: Partial<Item>): Promise<Item> {
+    // 1. Validation
+    const validated = updateItemSchema.parse(updates);
+
     const pg = await getApiClient(user);
 
     // Map updates to snake_case
     const dbUpdates: any = {};
-    if (updates.content !== undefined) dbUpdates.content = updates.content;
-    if (updates.description !== undefined) dbUpdates.description = updates.description;
-    if (updates.status !== undefined) dbUpdates.status = updates.status;
-    if (updates.type !== undefined) dbUpdates.type = updates.type;
-    if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
-    if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
-    if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate ? updates.dueDate.toISOString() : null;
-    if (updates.images !== undefined) dbUpdates.images = updates.images;
+    if (validated.content !== undefined) dbUpdates.content = validated.content;
+    if (validated.description !== undefined) dbUpdates.description = validated.description;
+    if (validated.status !== undefined) dbUpdates.status = validated.status;
+    if (validated.type !== undefined) dbUpdates.type = validated.type;
+    if (validated.priority !== undefined) dbUpdates.priority = validated.priority;
+    if (validated.tags !== undefined) dbUpdates.tags = validated.tags;
+    if (validated.dueDate !== undefined) dbUpdates.due_date = validated.dueDate ? validated.dueDate.toISOString() : null;
+    if (validated.images !== undefined) dbUpdates.images = validated.images;
 
     const { data, error } = await pg
       .from("items")

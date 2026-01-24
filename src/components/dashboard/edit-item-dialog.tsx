@@ -32,14 +32,22 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
   const [deletingImages, setDeletingImages] = useState<string[]>([]);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
 
+  // Error state for validation
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     if (item) {
       setFormData({ ...item });
+      setError(null); // Reset error when opening
     }
   }, [item]);
 
   const handleSave = () => {
     if (formData) {
+      if (!formData.content.trim()) {
+        setError("Der Titel darf nicht leer sein.");
+        return;
+      }
       onSave(formData);
       onClose();
     }
@@ -144,8 +152,12 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
                 className="text-xl font-bold border-0 px-0 shadow-none focus-visible:ring-0 h-auto bg-transparent"
                 value={formData.content}
                 placeholder="Titel..."
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, content: e.target.value });
+                  if (error) setError(null); // Clear error on change
+                }}
               />
+              {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
             </div>
 
             {/* PROPERTIES LIST */}
