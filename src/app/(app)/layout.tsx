@@ -11,7 +11,7 @@ export default function AppLayout({
     <ToastProvider>
       <MainNav />
       <CommandMenu />
-      <div className="container max-w-5xl mx-auto py-6 px-4 min-h-[calc(100vh-3.5rem)]">
+      <div className="container mx-auto min-h-[calc(100vh-3.5rem)] max-w-5xl px-4 py-6 pb-24 sm:pb-6">
         {children}
       </div>
     </ToastProvider>

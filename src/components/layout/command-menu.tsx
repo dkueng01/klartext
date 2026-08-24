@@ -4,6 +4,7 @@ import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
+  CalendarCheck2,
   LayoutDashboard,
   KanbanSquare,
   Plus,
@@ -42,10 +43,11 @@ export function CommandMenu() {
   // --- ACTIONS ---
 
   const actions = React.useMemo(() => ({
-    gotoJournal: () => router.push("/"),
+    gotoToday: () => router.push("/"),
+    gotoJournal: () => router.push("/journal"),
     gotoProjects: () => router.push("/projects"),
     newItem: () => {
-      // Navigiere erst (falls nötig)
+      // Die Schnellablage liegt auf der Heute-Seite.
       if (window.location.pathname !== "/") {
         router.push("/");
         // Kleines Timeout damit React Zeit hat zu rendern
@@ -85,6 +87,10 @@ export function CommandMenu() {
         <CommandEmpty>Keine Ergebnisse.</CommandEmpty>
 
         <CommandGroup heading="Navigation">
+          <CommandItem onSelect={() => runCommand(actions.gotoToday)}>
+            <CalendarCheck2 className="mr-2 h-4 w-4" />
+            <span>Heute</span>
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(actions.gotoJournal)}>
             <LayoutDashboard className="mr-2 h-4 w-4" />
             <span>Journal</span>

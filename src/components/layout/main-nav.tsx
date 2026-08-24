@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, KanbanSquare, Search } from "lucide-react";
+import { CalendarCheck2, LayoutDashboard, KanbanSquare, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,8 +22,13 @@ export function MainNav() {
 
   const navItems = [
     {
-      title: "Journal",
+      title: "Heute",
       href: "/",
+      icon: CalendarCheck2,
+    },
+    {
+      title: "Journal",
+      href: "/journal",
       icon: LayoutDashboard,
     },
     {
@@ -33,9 +38,26 @@ export function MainNav() {
     },
   ];
 
+  const navigationLinks = navItems.map((item) => (
+    <Link
+      key={item.href}
+      href={item.href}
+      aria-label={item.title}
+      aria-current={pathname === item.href ? "page" : undefined}
+      className={cn(
+        "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted hover:text-foreground",
+        pathname === item.href ? "text-foreground" : "text-foreground/60"
+      )}
+    >
+      <item.icon size={16} />
+      <span>{item.title}</span>
+    </Link>
+  ));
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center justify-between max-w-5xl mx-auto px-4">
+    <>
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
 
         {/* Logo & Links */}
         <div className="flex items-center gap-6">
@@ -46,22 +68,8 @@ export function MainNav() {
           </Link>
         </div>
 
-        <nav className="flex items-center gap-2 text-sm font-medium sm:gap-4" aria-label="Hauptnavigation">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-label={item.title}
-              aria-current={pathname === item.href ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted hover:text-foreground/80 sm:gap-2 sm:px-2",
-                pathname === item.href ? "text-foreground" : "text-foreground/60"
-              )}
-            >
-              <item.icon size={16} />
-              <span className="text-xs sm:text-sm">{item.title}</span>
-            </Link>
-          ))}
+        <nav className="hidden items-center gap-2 font-medium sm:flex" aria-label="Hauptnavigation">
+          {navigationLinks}
         </nav>
 
         {/* User Menu */}
@@ -100,7 +108,28 @@ export function MainNav() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
-    </header>
+        </div>
+      </header>
+
+      <nav
+        className="fixed inset-x-0 bottom-0 z-50 grid h-16 grid-cols-3 border-t bg-background/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-20px_rgba(0,0,0,0.5)] backdrop-blur sm:hidden"
+        aria-label="Mobile Hauptnavigation"
+      >
+        {navItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={pathname === item.href ? "page" : undefined}
+            className={cn(
+              "flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors",
+              pathname === item.href ? "text-foreground" : "text-muted-foreground"
+            )}
+          >
+            <item.icon className={cn("size-5", pathname === item.href && "text-primary")} />
+            <span>{item.title}</span>
+          </Link>
+        ))}
+      </nav>
+    </>
   );
 }

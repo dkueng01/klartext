@@ -64,7 +64,7 @@ export default function ProjectsPage() {
   if (!isLoaded) return null;
 
   return (
-    <div className="flex flex-col gap-6 h-[calc(100vh-6rem)]">
+    <div className="flex h-[calc(100dvh-11rem)] flex-col gap-6 sm:h-[calc(100vh-6rem)]">
 
       {/* Header Actions */}
       <div className="flex justify-between items-center">
