@@ -18,7 +18,6 @@ export const ItemService = {
       ...row,
       dueDate: row.due_date ? new Date(row.due_date) : null,
       createdAt: new Date(row.created_at),
-      isCompleted: row.status === 'done',
       images: row.images || []
     })) as Item[];
   },
@@ -51,8 +50,7 @@ export const ItemService = {
     return {
       ...data,
       dueDate: data.due_date ? new Date(data.due_date) : null,
-      createdAt: new Date(data.created_at),
-      isCompleted: data.status === 'done'
+      createdAt: new Date(data.created_at)
     } as Item;
   },
 
@@ -85,8 +83,7 @@ export const ItemService = {
     return {
       ...data,
       dueDate: data.due_date ? new Date(data.due_date) : null,
-      createdAt: new Date(data.created_at),
-      isCompleted: data.status === 'done'
+      createdAt: new Date(data.created_at)
     } as Item;
   },
 
@@ -120,7 +117,6 @@ export const ItemService = {
       ...data,
       dueDate: data.due_date ? new Date(data.due_date) : null,
       createdAt: new Date(data.created_at),
-      isCompleted: data.status === "done",
       images: data.images || [],
     } as Item;
   },

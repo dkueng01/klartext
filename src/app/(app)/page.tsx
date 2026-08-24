@@ -105,7 +105,6 @@ export default function TodayPage() {
       priority: parsed.priority,
       dueDate: parsed.dueDate,
       status: "todo",
-      isCompleted: false,
       createdAt: new Date(),
       description: "",
       images: [],
@@ -117,7 +116,6 @@ export default function TodayPage() {
     updateItem({
       ...item,
       status: complete ? "done" : "todo",
-      isCompleted: complete,
     });
   };
 
@@ -125,7 +123,6 @@ export default function TodayPage() {
     updateItem({
       ...item,
       status: item.status === "in_progress" ? "todo" : "in_progress",
-      isCompleted: false,
     });
   };
 
@@ -171,9 +168,8 @@ export default function TodayPage() {
             <h2 id="quick-capture-title" className="text-sm font-semibold">Schnell festhalten</h2>
             <p className="text-xs text-muted-foreground">Raus aus dem Kopf, ohne den Fokus zu verlieren.</p>
           </div>
-          <span className="hidden text-[11px] text-muted-foreground sm:inline">Aufgaben mit „todo“ beginnen</span>
         </div>
-        <OmniBar onAddItem={handleOmniAdd} allTags={allTags} />
+        <OmniBar onAddItem={handleOmniAdd} allTags={allTags} defaultType="todo" />
       </section>
 
       <section aria-labelledby="progress-title">
@@ -378,7 +374,7 @@ export default function TodayPage() {
                 />
               ))}
               <Button asChild variant="ghost" size="sm" className="mt-1 w-full justify-between text-xs text-muted-foreground">
-                <Link href="/projects">
+                <Link href="/tasks">
                   Alle Aufgaben <ArrowRight />
                 </Link>
               </Button>
@@ -587,7 +583,7 @@ function EmptyToday({ hasCompleted }: { hasCompleted: boolean }) {
       </span>
       <p className="text-sm font-medium">{hasCompleted ? "Für heute alles erledigt." : "Noch kein fester Plan für heute."}</p>
       <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
-        {hasCompleted ? "Guter Zeitpunkt für einen kurzen Rückblick." : "Wähle rechts eine Aufgabe aus oder erfasse oben etwas Neues mit @heute."}
+        {hasCompleted ? "Guter Zeitpunkt für einen kurzen Rückblick." : "Wähle unter „Als Nächstes“ eine Aufgabe aus oder erfasse oben eine neue mit @heute."}
       </p>
     </div>
   );

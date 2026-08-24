@@ -5,14 +5,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   CalendarCheck2,
+  CheckSquare,
   LayoutDashboard,
-  KanbanSquare,
-  Plus,
+  ListTodo,
   Moon,
   Sun,
   Laptop,
   Search,
-  LogOut
+  LogOut,
+  StickyNote,
 } from "lucide-react";
 
 import {
@@ -40,34 +41,37 @@ export function CommandMenu() {
     return () => document.removeEventListener("klartext:open-command-menu", openMenu);
   }, []);
 
+  const focusInput = React.useCallback((type?: "todo" | "note") => {
+    if (type) {
+      document.dispatchEvent(new CustomEvent("klartext:set-entry-type", { detail: type }));
+    }
+    const input = document.querySelector('[data-quick-capture="true"]') as HTMLInputElement;
+    if (input) {
+      input.focus();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, []);
+
+  const openCapture = React.useCallback((path: string, type: "todo" | "note") => {
+    if (window.location.pathname !== path) {
+      router.push(path);
+      setTimeout(() => focusInput(type), 150);
+    } else {
+      focusInput(type);
+    }
+  }, [focusInput, router]);
+
   // --- ACTIONS ---
 
   const actions = React.useMemo(() => ({
     gotoToday: () => router.push("/"),
     gotoJournal: () => router.push("/journal"),
-    gotoProjects: () => router.push("/projects"),
-    newItem: () => {
-      // Die Schnellablage liegt auf der Heute-Seite.
-      if (window.location.pathname !== "/") {
-        router.push("/");
-        // Kleines Timeout damit React Zeit hat zu rendern
-        setTimeout(() => focusInput(), 100);
-      } else {
-        focusInput();
-      }
-    },
+    gotoTasks: () => router.push("/tasks"),
+    newTask: () => openCapture("/", "todo"),
+    newNote: () => openCapture("/journal", "note"),
     resetFilter: () => router.push(pathname),
     logout: () => app.signOut(),
-  }), [router, app, pathname]);
-
-  // Helper um Input zu finden
-  const focusInput = () => {
-    const input = document.querySelector('input[placeholder*="Eingabe"]') as HTMLInputElement;
-    if (input) {
-      input.focus();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
+  }), [router, app, pathname, openCapture]);
 
   const runCommand = React.useCallback((command: () => unknown) => {
     setOpen(false);
@@ -95,18 +99,23 @@ export function CommandMenu() {
             <LayoutDashboard className="mr-2 h-4 w-4" />
             <span>Journal</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(actions.gotoProjects)}>
-            <KanbanSquare className="mr-2 h-4 w-4" />
-            <span>Projekte</span>
+          <CommandItem onSelect={() => runCommand(actions.gotoTasks)}>
+            <ListTodo className="mr-2 h-4 w-4" />
+            <span>Aufgaben</span>
           </CommandItem>
         </CommandGroup>
 
         <CommandSeparator />
 
         <CommandGroup heading="Aktionen">
-          <CommandItem onSelect={() => runCommand(actions.newItem)}>
-            <Plus className="mr-2 h-4 w-4" />
-            <span>Neuer Eintrag...</span>
+          <CommandItem onSelect={() => runCommand(actions.newTask)}>
+            <CheckSquare className="mr-2 h-4 w-4" />
+            <span>Neue Aufgabe...</span>
+          </CommandItem>
+
+          <CommandItem onSelect={() => runCommand(actions.newNote)}>
+            <StickyNote className="mr-2 h-4 w-4" />
+            <span>Neue Notiz...</span>
           </CommandItem>
 
           <CommandItem onSelect={() => runCommand(actions.resetFilter)}>

@@ -11,6 +11,9 @@ import { useUrlFilters } from "@/hooks/use-url-filters";
 import { ParsedResult } from "@/lib/parser";
 import { Item } from "@/lib/schema";
 import { stackClientApp } from "@/stack/client";
+import { Button } from "@/components/ui/button";
+
+type EntryTypeFilter = "all" | Item["type"];
 
 export default function JournalPage() {
   stackClientApp.useUser({ or: "redirect" });
@@ -18,6 +21,7 @@ export default function JournalPage() {
   const { items, isLoaded, addItem, updateItem, deleteItem } = useItems();
   const { activeTag, activePrio, activeDate, setFilter } = useUrlFilters();
   const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [entryTypeFilter, setEntryTypeFilter] = useState<EntryTypeFilter>("all");
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
@@ -27,6 +31,7 @@ export default function JournalPage() {
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      if (entryTypeFilter !== "all" && item.type !== entryTypeFilter) return false;
       if (activeTag && !item.tags.includes(activeTag)) return false;
       if (activePrio && item.priority !== activePrio) return false;
 
@@ -41,7 +46,7 @@ export default function JournalPage() {
 
       return true;
     });
-  }, [items, activeTag, activePrio, activeDate]);
+  }, [items, entryTypeFilter, activeTag, activePrio, activeDate]);
 
   const journalItems = [...filteredItems].sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
@@ -56,7 +61,6 @@ export default function JournalPage() {
       priority: parsed.priority,
       dueDate: parsed.dueDate,
       status: "todo",
-      isCompleted: false,
       createdAt: new Date(),
       description: "",
       images: [],
@@ -67,13 +71,37 @@ export default function JournalPage() {
 
   return (
     <div className="flex h-[calc(100dvh-11rem)] flex-col gap-5 sm:h-[calc(100vh-6rem)]">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Archiv & Gedanken</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">Journal</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Alle Einträge chronologisch</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight">Journal</h1>
+        </div>
+        <div className="inline-flex self-start rounded-lg bg-muted p-1" role="group" aria-label="Einträge nach Art filtern">
+          {([
+            ["all", "Alle"],
+            ["note", "Notizen"],
+            ["todo", "Aufgaben"],
+          ] as const).map(([value, label]) => (
+            <Button
+              key={value}
+              type="button"
+              variant={entryTypeFilter === value ? "secondary" : "ghost"}
+              size="sm"
+              className={`h-7 px-2.5 text-xs ${entryTypeFilter === value ? "bg-background shadow-sm" : ""}`}
+              onClick={() => setEntryTypeFilter(value)}
+              aria-pressed={entryTypeFilter === value}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       <FilterBar allTags={allTags} />
-      <OmniBar onAddItem={handleOmniAdd} allTags={allTags} />
+      <section className="space-y-2" aria-labelledby="new-entry-title">
+        <h2 id="new-entry-title" className="px-1 text-xs font-semibold text-muted-foreground">Neuer Eintrag</h2>
+        <OmniBar onAddItem={handleOmniAdd} allTags={allTags} defaultType="note" />
+      </section>
 
       <div className="relative flex-1 overflow-hidden rounded-xl border bg-muted/10">
         <JournalView
@@ -85,7 +113,6 @@ export default function JournalPage() {
             updateItem({
               ...item,
               status: item.status === "done" ? "todo" : "done",
-              isCompleted: item.status !== "done",
             });
           }}
           onEdit={setEditingItem}

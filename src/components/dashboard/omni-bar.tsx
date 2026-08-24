@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useId, useRef } from "react";
-import { inputSchema } from "@/lib/schema";
+import { inputSchema, Item } from "@/lib/schema";
 import { parseInput, ParsedResult } from "@/lib/parser";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,19 +9,34 @@ import { CheckSquare, StickyNote, Send, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface OmniBarProps {
   onAddItem: (parsed: ParsedResult) => void;
   allTags: string[];
+  defaultType?: Item["type"];
 }
 
-export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
+export function OmniBar({ onAddItem, allTags, defaultType = "note" }: OmniBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const errorId = useId();
   const [inputValue, setInputValue] = useState("");
   const [parsedPreview, setParsedPreview] = useState<ParsedResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [entryType, setEntryType] = useState<Item["type"]>(defaultType);
+
+  useEffect(() => {
+    const selectEntryType = (event: Event) => {
+      const type = (event as CustomEvent<Item["type"]>).detail;
+      if (type !== "todo" && type !== "note") return;
+      setEntryType(type);
+      requestAnimationFrame(() => inputRef.current?.focus());
+    };
+
+    document.addEventListener("klartext:set-entry-type", selectEntryType);
+    return () => document.removeEventListener("klartext:set-entry-type", selectEntryType);
+  }, []);
 
   // Autocomplete Logic
   useEffect(() => {
@@ -50,8 +65,8 @@ export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
     }
 
     // 2. Business Logic Parsing
-    setParsedPreview(parseInput(inputValue));
-  }, [inputValue]);
+    setParsedPreview(parseInput(inputValue, entryType));
+  }, [inputValue, entryType]);
 
   const handleSubmit = () => {
     // Strikte Validierung beim Absenden
@@ -62,12 +77,16 @@ export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
       return;
     }
 
-    if (parsedPreview) {
-      onAddItem(parsedPreview);
-      setInputValue("");
-      setParsedPreview(null);
-      setError(null);
-    }
+    onAddItem(parseInput(inputValue, entryType));
+    setInputValue("");
+    setParsedPreview(null);
+    setError(null);
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+    if (/^(todo|task|aufgabe)\s+/i.test(value)) setEntryType("todo");
+    if (/^(notiz|note)\s+/i.test(value)) setEntryType("note");
   };
 
   const applySuggestion = (tag: string) => {
@@ -97,19 +116,47 @@ export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
 
   return (
     <div className="relative z-20 space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="inline-flex rounded-lg bg-muted p-1" role="group" aria-label="Art des neuen Eintrags">
+          <Button
+            type="button"
+            variant={entryType === "todo" ? "secondary" : "ghost"}
+            size="sm"
+            className={cn("h-7 px-2.5 text-xs", entryType === "todo" && "bg-background shadow-sm")}
+            onClick={() => setEntryType("todo")}
+            aria-pressed={entryType === "todo"}
+          >
+            <CheckSquare /> Aufgabe
+          </Button>
+          <Button
+            type="button"
+            variant={entryType === "note" ? "secondary" : "ghost"}
+            size="sm"
+            className={cn("h-7 px-2.5 text-xs", entryType === "note" && "bg-background shadow-sm")}
+            onClick={() => setEntryType("note")}
+            aria-pressed={entryType === "note"}
+          >
+            <StickyNote /> Notiz
+          </Button>
+        </div>
+        <span className="hidden text-[11px] text-muted-foreground sm:inline">#Bereich · !Priorität · @Datum</span>
+      </div>
+
       <div className={`flex items-center gap-2 bg-background border rounded-md shadow-sm px-3 py-2 transition-all focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${error ? "border-red-500 ring-red-200" : ""}`}>
-        <div className={`flex items-center justify-center w-6 h-6 rounded-sm shrink-0 transition-colors ${parsedPreview?.type === 'todo' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
-          {parsedPreview?.type === 'todo' ? <CheckSquare size={14} /> : <StickyNote size={14} />}
-          <span className="sr-only">{parsedPreview?.type === "todo" ? "Aufgabe" : "Notiz"}</span>
+        <div className={`flex items-center justify-center w-6 h-6 rounded-sm shrink-0 transition-colors ${(parsedPreview?.type ?? entryType) === 'todo' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
+          {(parsedPreview?.type ?? entryType) === 'todo' ? <CheckSquare size={14} /> : <StickyNote size={14} />}
+          <span className="sr-only">{(parsedPreview?.type ?? entryType) === "todo" ? "Aufgabe" : "Notiz"}</span>
         </div>
         <Input
           ref={inputRef}
+          data-quick-capture="true"
           autoFocus
           className="flex-1 border-0 shadow-none focus-visible:ring-0 px-2 h-auto text-sm placeholder:text-muted-foreground"
-          placeholder="Eingabe... (z.B. todo Design Review #projektA !hoch)"
+          placeholder={entryType === "todo" ? "Was möchtest du erledigen?" : "Was möchtest du festhalten?"}
           value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          onChange={(e) => handleInputChange(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          aria-label={entryType === "todo" ? "Neue Aufgabe" : "Neue Notiz"}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
         />
@@ -119,7 +166,7 @@ export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
           variant="ghost"
           className="h-8 w-8 text-muted-foreground hover:text-primary"
           onClick={handleSubmit}
-          aria-label="Eintrag speichern"
+          aria-label={entryType === "todo" ? "Aufgabe speichern" : "Notiz speichern"}
         >
           <Send size={16} />
         </Button>

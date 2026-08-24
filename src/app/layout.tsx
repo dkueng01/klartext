@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Klartext",
-  description: "Dein persönlicher Notiz- und Aufgabenverwaltungssystem",
+  description: "Dein persönliches System für Aufgaben, Notizen und täglichen Fokus.",
 };
 
 export default function RootLayout({

@@ -7,7 +7,6 @@ export interface Item {
   images: string[];
   type: "todo" | "note";
   status: ItemStatus;
-  isCompleted: boolean;
   createdAt: Date;
   tags: string[];
   priority: "low" | "medium" | "high" | "none";

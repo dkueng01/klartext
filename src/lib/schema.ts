@@ -11,7 +11,6 @@ const itemBase = {
   images: z.array(z.string()).default([]),
   type: z.enum(["todo", "note"]),
   status: z.enum(["todo", "in_progress", "done"]),
-  isCompleted: z.boolean(),
   tags: z.array(z.string()),
   priority: z.enum(["low", "medium", "high", "none"]),
   dueDate: z.date().nullable(),
@@ -30,7 +29,6 @@ export const createItemSchema = z.object({
 }).partial({
   // Allow these to be omitted during creation if the service sets defaults
   status: true,
-  isCompleted: true,
   tags: true,
   priority: true,
   dueDate: true,

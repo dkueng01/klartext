@@ -91,7 +91,7 @@ export function KanbanBoard({ items, mode, onEdit, onUpdateStatus }: KanbanBoard
         <div className="max-w-4xl mx-auto py-4 space-y-6">
           {/* Active Section */}
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pl-1 mb-3">Zu erledigen ({active.length})</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pl-1 mb-3">Offen ({active.length})</h3>
             {active.map(item => (
               <ListItem key={item.id} item={item} onEdit={onEdit} onUpdateStatus={onUpdateStatus} />
             ))}
@@ -130,7 +130,7 @@ export function KanbanBoard({ items, mode, onEdit, onUpdateStatus }: KanbanBoard
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <ScrollArea className="h-full">
         <div className="flex h-full gap-4 p-4 min-w-[900px]"> {/* Min-Width erhöht für mehr Platz */}
-          <KanbanColumn id="todo" title="Zu tun" items={columns.todo} onEdit={onEdit} />
+          <KanbanColumn id="todo" title="Offen" items={columns.todo} onEdit={onEdit} />
           <KanbanColumn id="in_progress" title="In Arbeit" items={columns.in_progress} onEdit={onEdit} isWarning />
           <KanbanColumn
             id="done"
@@ -236,7 +236,7 @@ function KanbanCardContent({ item, isOverlay }: { item: Item, isOverlay?: boolea
           </span>
         </div>
 
-        {/* Tags & Meta */}
+        {/* Bereiche & Meta */}
         <div className="pl-6 flex flex-wrap items-center gap-2">
           {/* Priority Icon */}
           {item.priority !== 'none' && (
@@ -254,7 +254,7 @@ function KanbanCardContent({ item, isOverlay }: { item: Item, isOverlay?: boolea
             </div>
           )}
 
-          {/* Tags */}
+          {/* Bereiche */}
           {item.tags.map(t => (
             <span key={t} className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-sm border border-transparent">
               #{t}

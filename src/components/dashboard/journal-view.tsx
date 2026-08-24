@@ -126,20 +126,20 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
                           type="button"
                           onClick={(e) => { e.stopPropagation(); onTagClick(tag); }}
                           className="h-5 shrink-0 cursor-pointer border-0 bg-muted px-1.5 text-[10px] font-normal text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                          aria-label={`Nach Tag ${tag} filtern`}
+                          aria-label={`Nach Bereich ${tag} filtern`}
                         >
                           #{tag}
                         </button>
                       </Badge>
                     ))}
 
-                    {item.priority !== 'none' && !item.isCompleted && (
+                    {item.priority !== 'none' && item.status !== 'done' && (
                       <div className="flex items-center shrink-0">
                         {getPrioIcon(item.priority)}
                       </div>
                     )}
 
-                    {item.dueDate && !item.isCompleted && (
+                    {item.dueDate && item.status !== 'done' && (
                       <span className={cn(
                         "flex items-center gap-0.5 text-[9px] px-1 rounded border shrink-0",
                         isPast(new Date(item.dueDate)) && !isSameDay(new Date(item.dueDate), new Date())

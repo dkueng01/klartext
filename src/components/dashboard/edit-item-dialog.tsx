@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Trash2, Calendar as CalendarIcon, Flag, Clock, Plus, X, Circle, Hash, ImageIcon, ExternalLink, Loader2 } from "lucide-react";
+import { Trash2, Calendar as CalendarIcon, Flag, Clock, Plus, X, Circle, Hash, ImageIcon, ExternalLink, Loader2, ListTodo, StickyNote } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -78,6 +78,15 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
     }
   };
 
+  const handleTypeChange = (type: Item["type"]) => {
+    if (!formData) return;
+    setFormData({
+      ...formData,
+      type,
+      ...(type === "note" ? { status: "todo" as const, priority: "none" as const, dueDate: null } : {}),
+    });
+  };
+
   const handleImageUpload = (newUrl: string) => {
     if (!formData) return;
 
@@ -138,11 +147,11 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
         {/* HEADER - No changes needed, shrink-0 prevents it from collapsing */}
         <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
           <DialogDescription className="sr-only">
-            Titel, Status, Priorität, Datum, Tags, Notizen und Anhänge des Eintrags bearbeiten.
+            Art, Titel, Status, Priorität, Fälligkeit, Bereiche, Details und Anhänge des Eintrags bearbeiten.
           </DialogDescription>
           <div className="flex items-center justify-start gap-2">
             <Badge variant={formData.type === 'todo' ? 'default' : 'secondary'} className="uppercase text-[10px] tracking-wider font-semibold">
-              {formData.type}
+              {formData.type === "todo" ? "Aufgabe" : "Notiz"}
             </Badge>
             <DialogTitle className="text-xs font-normal text-muted-foreground flex items-center gap-2">
               <Clock size={12} />
@@ -159,7 +168,7 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
               <Input
                 className="text-xl font-bold border-0 px-0 shadow-none focus-visible:ring-0 h-auto bg-transparent"
                 value={formData.content}
-                placeholder="Titel..."
+                placeholder={formData.type === "todo" ? "Was ist zu erledigen?" : "Worum geht es?"}
                 onChange={(e) => {
                   setFormData({ ...formData, content: e.target.value });
                   if (error) setError(null); // Clear error on change
@@ -170,22 +179,38 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
 
             {/* PROPERTIES LIST */}
             <div className="space-y-1 mb-6">
+              {/* Type */}
+              <div className="flex items-center h-9">
+                <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium">
+                  {formData.type === "todo" ? <ListTodo size={14} /> : <StickyNote size={14} />} Art
+                </div>
+                <div className="flex-1">
+                  <Select value={formData.type} onValueChange={(value) => handleTypeChange(value as Item["type"])}>
+                    <SelectTrigger className="h-7 w-auto min-w-[140px] border-0 shadow-none hover:bg-muted/50 px-2 text-xs -ml-2"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todo"><ListTodo /> Aufgabe</SelectItem>
+                      <SelectItem value="note"><StickyNote /> Notiz</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               {/* Status */}
               {formData.type === 'todo' && (
+                <>
                 <div className="flex items-center h-9">
                   <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium"><Circle size={14} /> Status</div>
                   <div className="flex-1">
-                    <Select value={formData.status} onValueChange={(val: any) => setFormData({ ...formData, status: val, isCompleted: val === 'done' })}>
+                    <Select value={formData.status} onValueChange={(val: any) => setFormData({ ...formData, status: val })}>
                       <SelectTrigger className="h-7 w-auto min-w-[140px] border-0 shadow-none hover:bg-muted/50 px-2 text-xs -ml-2"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="todo">Zu erledigen</SelectItem>
+                        <SelectItem value="todo">Offen</SelectItem>
                         <SelectItem value="in_progress">In Arbeit</SelectItem>
                         <SelectItem value="done">Erledigt</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-              )}
 
               {/* Priority */}
               <div className="flex items-center h-9">
@@ -205,12 +230,12 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
 
               {/* Date */}
               <div className="flex items-center h-9">
-                <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium"><CalendarIcon size={14} /> Datum</div>
+                <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium"><CalendarIcon size={14} /> Fällig</div>
                 <div className="flex-1">
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant={"ghost"} className={cn("h-7 w-auto min-w-[140px] justify-start text-left font-normal text-xs px-2 -ml-2 hover:bg-muted/50", !formData.dueDate && "text-muted-foreground")}>
-                        {formData.dueDate ? format(new Date(formData.dueDate), "PPP", { locale: de }) : <span>Kein Datum</span>}
+                        {formData.dueDate ? format(new Date(formData.dueDate), "PPP", { locale: de }) : <span>Nicht geplant</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -219,28 +244,30 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
                   </Popover>
                 </div>
               </div>
+                </>
+              )}
 
-              {/* Tags */}
+              {/* Bereiche */}
               <div className="flex items-center min-h-[36px] py-1">
-                <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium self-start pt-1.5"><Hash size={14} /> Tags</div>
+                <div className="w-[120px] flex items-center gap-2 text-muted-foreground text-xs font-medium self-start pt-1.5"><Hash size={14} /> Bereiche</div>
                 <div className="flex-1 flex flex-wrap gap-1.5 items-center">
                   {formData.tags.map(tag => (
                     <Badge key={tag} variant="secondary" className="pl-2 pr-1 h-6 font-normal text-xs flex items-center gap-1 bg-muted hover:bg-muted/80">
-                      {tag}
+                      #{tag}
                       <button
                         type="button"
                         onClick={() => removeTag(tag)}
                         className="text-muted-foreground hover:text-red-500 rounded-full p-0.5 ml-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        aria-label={`Tag ${tag} entfernen`}
+                        aria-label={`Bereich ${tag} entfernen`}
                       >
                         <X size={10} />
                       </button>
                     </Badge>
                   ))}
                   {showTagInput ? (
-                    <Input autoFocus className="h-6 w-24 text-xs" placeholder="Tag..." value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addTag(); if (e.key === 'Escape') setShowTagInput(false); }} onBlur={addTag} />
+                    <Input autoFocus className="h-6 w-24 text-xs" placeholder="Bereich..." value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addTag(); if (e.key === 'Escape') setShowTagInput(false); }} onBlur={addTag} />
                   ) : (
-                    <Button variant="ghost" size="sm" onClick={() => setShowTagInput(true)} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary rounded-full" aria-label="Tag hinzufügen"><Plus size={14} /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => setShowTagInput(true)} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary rounded-full" aria-label="Bereich hinzufügen"><Plus size={14} /></Button>
                   )}
                 </div>
               </div>
@@ -250,7 +277,7 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
             <div className="space-y-2 pt-4 border-t">
               <Textarea
                 className="min-h-[150px] resize-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 text-sm leading-relaxed"
-                placeholder="Notizen hinzufügen..."
+                placeholder={formData.type === "todo" ? "Details oder nächste Schritte hinzufügen..." : "Notiz ausarbeiten..."}
                 value={formData.description || ""}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />

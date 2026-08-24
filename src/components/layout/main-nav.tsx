@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { CalendarCheck2, LayoutDashboard, KanbanSquare, Search } from "lucide-react";
+import { CalendarCheck2, LayoutDashboard, ListTodo, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,9 +32,9 @@ export function MainNav() {
       icon: LayoutDashboard,
     },
     {
-      title: "Projekte",
-      href: "/projects",
-      icon: KanbanSquare,
+      title: "Aufgaben",
+      href: "/tasks",
+      icon: ListTodo,
     },
   ];
 

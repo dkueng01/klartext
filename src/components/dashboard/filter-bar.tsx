@@ -12,6 +12,7 @@ import {
   Check,
   AlertCircle,
   Clock,
+  Hash,
   ListFilter
 } from "lucide-react";
 import { useUrlFilters } from "@/hooks/use-url-filters";
@@ -117,6 +118,11 @@ export function FilterBar({ allTags }: FilterBarProps) {
         </Popover>
 
         <Separator orientation="vertical" className="h-5 shrink-0 mx-1" />
+
+        <div className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-muted-foreground" aria-label="Bereiche">
+          <Hash size={12} />
+          <span>Bereiche</span>
+        </div>
 
         {/* 2. TAGS LIST */}
         <Button
