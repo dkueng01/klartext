@@ -5,6 +5,7 @@ import { useStackApp } from "@stackframe/stack";
 import { Item } from "@/lib/schema";
 import { ItemService } from "@/services/item-service";
 import { useToast } from "@/components/ui/toast";
+import { TASK_COMPLETED_EVENT } from "@/lib/events";
 
 export function useItems() {
   const app = useStackApp();
@@ -80,6 +81,16 @@ export function useItems() {
   // --- 3. Update Item (Optimistic) ---
   const updateItem = useCallback(async (updatedItem: Item) => {
     if (!user) return;
+
+    const previousItem = itemsRef.current.find((item) => item.id === updatedItem.id);
+    const wasJustCompleted =
+      previousItem?.type === "todo" &&
+      previousItem.status !== "done" &&
+      updatedItem.status === "done";
+
+    if (wasJustCompleted) {
+      document.dispatchEvent(new CustomEvent(TASK_COMPLETED_EVENT));
+    }
 
     // Snapshot previous state in case we need to rollback
     // (React state updates don't give us easy access to 'previous' outside the setter, 

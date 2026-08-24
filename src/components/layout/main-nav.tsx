@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { stackClientApp } from "@/stack/client";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export function MainNav() {
   const user = stackClientApp.useUser();
@@ -85,6 +86,7 @@ export function MainNav() {
           >
             <Search size={15} />
           </Button>
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full" aria-label="Benutzermenü öffnen">
