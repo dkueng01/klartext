@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
 
 interface ImageUploadProps {
   onUpload: (url: string) => void;
@@ -11,6 +12,7 @@ interface ImageUploadProps {
 }
 
 export function ImageUpload({ onUpload, disabled }: ImageUploadProps) {
+  const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +40,11 @@ export function ImageUpload({ onUpload, disabled }: ImageUploadProps) {
       onUpload(data.secure_url);
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Fehler beim Upload. Bitte versuche es erneut.");
+      toast({
+        title: "Bild konnte nicht hochgeladen werden",
+        description: "Bitte versuche es erneut.",
+        variant: "error",
+      });
     } finally {
       setIsUploading(false);
       // Input resetten, damit man das gleiche Bild nochmal wählen kann falls nötig

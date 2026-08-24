@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useItems } from "@/hooks/use-items";
 import { useUrlFilters } from "@/hooks/use-url-filters";
 import { KanbanBoard } from "@/components/dashboard/kanban-board";
@@ -20,6 +20,12 @@ export default function ProjectsPage() {
 
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("kanban");
+
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 639px)").matches) {
+      setViewMode("list");
+    }
+  }, []);
 
   // Derived State: Tags sammeln
   const allTags = useMemo(() => {
@@ -69,6 +75,7 @@ export default function ProjectsPage() {
             variant="ghost"
             size="sm"
             onClick={() => setViewMode("list")}
+            aria-pressed={viewMode === "list"}
             className={`h-7 px-2 ${viewMode === 'list' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
           >
             <ListIcon size={14} className="mr-1" /> Liste
@@ -77,6 +84,7 @@ export default function ProjectsPage() {
             variant="ghost"
             size="sm"
             onClick={() => setViewMode("kanban")}
+            aria-pressed={viewMode === "kanban"}
             className={`h-7 px-2 ${viewMode === 'kanban' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
           >
             <ColumnsIcon size={14} className="mr-1" /> Board

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, KanbanSquare, Settings, User } from "lucide-react";
+import { LayoutDashboard, KanbanSquare, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,29 +46,42 @@ export function MainNav() {
           </Link>
         </div>
 
-        <nav className="flex items-center gap-4 text-sm font-medium">
+        <nav className="flex items-center gap-2 text-sm font-medium sm:gap-4" aria-label="Hauptnavigation">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
+              aria-label={item.title}
+              aria-current={pathname === item.href ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2 transition-colors hover:text-foreground/80",
+                "flex items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted hover:text-foreground/80 sm:gap-2 sm:px-2",
                 pathname === item.href ? "text-foreground" : "text-foreground/60"
               )}
             >
               <item.icon size={16} />
-              <span className="hidden sm:inline-block">{item.title}</span>
+              <span className="text-xs sm:text-sm">{item.title}</span>
             </Link>
           ))}
         </nav>
 
         {/* User Menu */}
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full text-muted-foreground"
+            onClick={() => document.dispatchEvent(new CustomEvent("klartext:open-command-menu"))}
+            aria-label="Befehlsmenü öffnen"
+            title="Befehlsmenü öffnen (⌘K)"
+          >
+            <Search size={15} />
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full" aria-label="Benutzermenü öffnen">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.profileImageUrl!} alt="@user" />
+                  <AvatarImage src={user?.profileImageUrl!} alt={user?.displayName ? `Profilbild von ${user.displayName}` : "Profilbild"} />
                   <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
                 </Avatar>
               </Button>

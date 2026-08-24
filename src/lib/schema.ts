@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const inputSchema = z.object({
-  raw: z.string().min(2, { message: "Bitte mindestens 2 Zeichen eingeben." }).max(500),
+  raw: z.string().min(2, { message: "Bitte mindestens 2 Zeichen eingeben." }).max(500, { message: "Bitte maximal 500 Zeichen eingeben." }),
 });
 
 // Base schema parts for reuse

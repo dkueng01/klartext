@@ -1,5 +1,6 @@
 import { MainNav } from "@/components/layout/main-nav";
 import { CommandMenu } from "@/components/layout/command-menu";
+import { ToastProvider } from "@/components/ui/toast";
 
 export default function AppLayout({
   children,
@@ -7,12 +8,12 @@ export default function AppLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <>
+    <ToastProvider>
       <MainNav />
       <CommandMenu />
       <div className="container max-w-5xl mx-auto py-6 px-4 min-h-[calc(100vh-3.5rem)]">
         {children}
       </div>
-    </>
+    </ToastProvider>
   );
 }

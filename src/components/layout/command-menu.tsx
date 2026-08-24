@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   LayoutDashboard,
@@ -11,8 +11,7 @@ import {
   Sun,
   Laptop,
   Search,
-  LogOut,
-  User
+  LogOut
 } from "lucide-react";
 
 import {
@@ -23,7 +22,6 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-  CommandShortcut,
 } from "@/components/ui/command";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { useStackApp } from "@stackframe/stack";
@@ -31,8 +29,15 @@ import { useStackApp } from "@stackframe/stack";
 export function CommandMenu() {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { setTheme } = useTheme();
   const app = useStackApp(); // Für Logout
+
+  React.useEffect(() => {
+    const openMenu = () => setOpen(true);
+    document.addEventListener("klartext:open-command-menu", openMenu);
+    return () => document.removeEventListener("klartext:open-command-menu", openMenu);
+  }, []);
 
   // --- ACTIONS ---
 
@@ -49,9 +54,9 @@ export function CommandMenu() {
         focusInput();
       }
     },
-    resetFilter: () => router.push("/"), // Einfachste Art Filter zu clearen: Reload/Nav
+    resetFilter: () => router.push(pathname),
     logout: () => app.signOut(),
-  }), [router, app]);
+  }), [router, app, pathname]);
 
   // Helper um Input zu finden
   const focusInput = () => {
@@ -73,14 +78,6 @@ export function CommandMenu() {
   // Toggle Menu: CMD+K
   useHotkeys("k", () => setOpen((open) => !open));
 
-  // Navigation: CMD+J (Journal), CMD+P (Projekte)
-  useHotkeys("j", actions.gotoJournal);
-  useHotkeys("p", actions.gotoProjects);
-
-  // Action: CMD+N (New Item)
-  useHotkeys("n", actions.newItem);
-
-
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput placeholder="Suche nach Befehlen..." />
@@ -91,12 +88,10 @@ export function CommandMenu() {
           <CommandItem onSelect={() => runCommand(actions.gotoJournal)}>
             <LayoutDashboard className="mr-2 h-4 w-4" />
             <span>Journal</span>
-            <CommandShortcut>⌘J</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(actions.gotoProjects)}>
             <KanbanSquare className="mr-2 h-4 w-4" />
             <span>Projekte</span>
-            <CommandShortcut>⌘P</CommandShortcut>
           </CommandItem>
         </CommandGroup>
 
@@ -106,7 +101,6 @@ export function CommandMenu() {
           <CommandItem onSelect={() => runCommand(actions.newItem)}>
             <Plus className="mr-2 h-4 w-4" />
             <span>Neuer Eintrag...</span>
-            <CommandShortcut>⌘N</CommandShortcut>
           </CommandItem>
 
           <CommandItem onSelect={() => runCommand(actions.resetFilter)}>

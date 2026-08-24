@@ -5,7 +5,8 @@ import { Item, ItemStatus } from "@/lib/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, Circle, CheckCircle2, Flag, Calendar, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { GripVertical, Circle, CheckCircle2, Flag, Calendar, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { createPortal } from "react-dom";
 import { format, isPast, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
@@ -39,6 +40,8 @@ const dropAnimation: DropAnimation = {
   }),
 };
 
+const DONE_PREVIEW_COUNT = 5;
+
 // Helper für Prio Farben & Icons
 const getPrioIcon = (prio: string) => {
   switch (prio) {
@@ -51,6 +54,7 @@ const getPrioIcon = (prio: string) => {
 
 export function KanbanBoard({ items, mode, onEdit, onUpdateStatus }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [showAllDone, setShowAllDone] = useState(false);
 
   const handleDragStart = (event: DragStartEvent) => setActiveId(event.active.id as string);
 
@@ -80,6 +84,7 @@ export function KanbanBoard({ items, mode, onEdit, onUpdateStatus }: KanbanBoard
   if (mode === "list") {
     const active = items.filter(i => i.status !== 'done');
     const done = items.filter(i => i.status === 'done');
+    const visibleDone = showAllDone ? done : done.slice(0, DONE_PREVIEW_COUNT);
 
     return (
       <ScrollArea className="h-full px-4">
@@ -97,9 +102,16 @@ export function KanbanBoard({ items, mode, onEdit, onUpdateStatus }: KanbanBoard
           {done.length > 0 && (
             <div className="space-y-2 pt-4">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pl-1 mb-3">Erledigt ({done.length})</h3>
-              {done.map(item => (
+              {visibleDone.map(item => (
                 <ListItem key={item.id} item={item} onEdit={onEdit} onUpdateStatus={onUpdateStatus} isDone />
               ))}
+              {done.length > DONE_PREVIEW_COUNT && (
+                <DoneToggle
+                  hiddenCount={done.length - DONE_PREVIEW_COUNT}
+                  expanded={showAllDone}
+                  onToggle={() => setShowAllDone((current) => !current)}
+                />
+              )}
             </div>
           )}
         </div>
@@ -120,7 +132,21 @@ export function KanbanBoard({ items, mode, onEdit, onUpdateStatus }: KanbanBoard
         <div className="flex h-full gap-4 p-4 min-w-[900px]"> {/* Min-Width erhöht für mehr Platz */}
           <KanbanColumn id="todo" title="Zu tun" items={columns.todo} onEdit={onEdit} />
           <KanbanColumn id="in_progress" title="In Arbeit" items={columns.in_progress} onEdit={onEdit} isWarning />
-          <KanbanColumn id="done" title="Erledigt" items={columns.done} onEdit={onEdit} isSuccess />
+          <KanbanColumn
+            id="done"
+            title="Erledigt"
+            items={showAllDone ? columns.done : columns.done.slice(0, DONE_PREVIEW_COUNT)}
+            totalCount={columns.done.length}
+            onEdit={onEdit}
+            isSuccess
+            footer={columns.done.length > DONE_PREVIEW_COUNT ? (
+              <DoneToggle
+                hiddenCount={columns.done.length - DONE_PREVIEW_COUNT}
+                expanded={showAllDone}
+                onToggle={() => setShowAllDone((current) => !current)}
+              />
+            ) : undefined}
+          />
         </div>
       </ScrollArea>
 
@@ -136,7 +162,7 @@ export function KanbanBoard({ items, mode, onEdit, onUpdateStatus }: KanbanBoard
 
 // --- SUB COMPONENTS ---
 
-function KanbanColumn({ id, title, items, onEdit, isWarning, isSuccess }: { id: ItemStatus, title: string, items: Item[], onEdit: (i: Item) => void, isWarning?: boolean, isSuccess?: boolean }) {
+function KanbanColumn({ id, title, items, totalCount, onEdit, isWarning, isSuccess, footer }: { id: ItemStatus, title: string, items: Item[], totalCount?: number, onEdit: (i: Item) => void, isWarning?: boolean, isSuccess?: boolean, footer?: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
@@ -154,7 +180,7 @@ function KanbanColumn({ id, title, items, onEdit, isWarning, isSuccess }: { id: 
           <span className="text-xs font-semibold uppercase tracking-wide text-foreground/80">{title}</span>
         </div>
         <Badge variant="secondary" className="text-[10px] h-5 px-1.5 min-w-[20px] justify-center bg-background border shadow-sm">
-          {items.length}
+          {totalCount ?? items.length}
         </Badge>
       </div>
 
@@ -169,6 +195,7 @@ function KanbanColumn({ id, title, items, onEdit, isWarning, isSuccess }: { id: 
             <span className="text-[10px] font-medium uppercase">Leer</span>
           </div>
         )}
+        {footer}
       </div>
     </div>
   );
@@ -193,7 +220,7 @@ function DraggableCard({ item, onEdit }: { item: Item, onEdit: (i: Item) => void
 
 // Separate Content Component für Card & Overlay (DRY)
 function KanbanCardContent({ item, isOverlay }: { item: Item, isOverlay?: boolean }) {
-  const isOverdue = item.dueDate && isPast(new Date(item.dueDate)) && !isSameDay(new Date(item.dueDate), new Date());
+  const isOverdue = item.status !== "done" && item.dueDate && isPast(new Date(item.dueDate)) && !isSameDay(new Date(item.dueDate), new Date());
 
   return (
     <Card className={cn(
@@ -241,21 +268,35 @@ function KanbanCardContent({ item, isOverlay }: { item: Item, isOverlay?: boolea
 
 // --- LIST ITEM COMPONENT ---
 function ListItem({ item, onEdit, onUpdateStatus, isDone }: { item: Item, onEdit: (i: Item) => void, onUpdateStatus: (id: string, status: ItemStatus) => void, isDone?: boolean }) {
+  const isOverdue = item.dueDate && isPast(new Date(item.dueDate)) && !isSameDay(new Date(item.dueDate), new Date()) && !isDone;
+
   return (
     <div
       onClick={() => onEdit(item)}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onEdit(item);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Aufgabe bearbeiten: ${item.content}`}
       className={cn(
-        "group flex items-center gap-4 p-3 rounded-lg border bg-card transition-all hover:shadow-sm hover:border-primary/30 cursor-pointer",
+        "group flex items-center gap-4 p-3 rounded-lg border bg-card transition-all hover:shadow-sm hover:border-primary/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         isDone && "bg-muted/10 opacity-70"
       )}
     >
       {/* Checkbox Action */}
-      <div
+      <button
+        type="button"
         onClick={(e) => { e.stopPropagation(); onUpdateStatus(item.id, isDone ? 'todo' : 'done'); }}
-        className="text-muted-foreground hover:text-primary transition-colors pt-0.5"
+        className="rounded-full text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={isDone ? `Aufgabe „${item.content}“ wieder öffnen` : `Aufgabe „${item.content}“ erledigen`}
       >
         {isDone ? <CheckCircle2 size={20} className="text-green-600" /> : <Circle size={20} />}
-      </div>
+      </button>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
@@ -268,7 +309,7 @@ function ListItem({ item, onEdit, onUpdateStatus, isDone }: { item: Item, onEdit
 
         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
           {item.dueDate && (
-            <span className={cn("flex items-center gap-1", isPast(new Date(item.dueDate)) && !isDone ? "text-red-500" : "")}>
+            <span className={cn("flex items-center gap-1", isOverdue ? "text-red-500" : "")}>
               <Clock size={10} /> {format(new Date(item.dueDate), "dd.MM.")}
             </span>
           )}
@@ -286,6 +327,22 @@ function ListItem({ item, onEdit, onUpdateStatus, isDone }: { item: Item, onEdit
       )}
     </div>
   )
+}
+
+function DoneToggle({ hiddenCount, expanded, onToggle }: { hiddenCount: number, expanded: boolean, onToggle: () => void }) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={onToggle}
+      className="mt-1 w-full text-xs text-muted-foreground"
+      aria-expanded={expanded}
+    >
+      {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      {expanded ? "Weniger anzeigen" : `${hiddenCount} weitere erledigte anzeigen`}
+    </Button>
+  );
 }
 
 function KanbanIconPlaceholder() {

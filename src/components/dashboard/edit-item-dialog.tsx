@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Item } from "@/lib/schema";
-import { Dialog, DialogContent, DialogFooter, DialogTitle, DialogHeader } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,7 @@ import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ImageUpload } from "../ui/image-upload";
 import { deleteImageFromCloudinary } from "@/actions/cloudinary";
+import { useToast } from "@/components/ui/toast";
 
 interface EditItemDialogProps {
   item: Item | null;
@@ -26,10 +27,10 @@ interface EditItemDialogProps {
 }
 
 export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditItemDialogProps) {
+  const { toast } = useToast();
   const [formData, setFormData] = useState<Item | null>(null);
   const [newTag, setNewTag] = useState("");
   const [showTagInput, setShowTagInput] = useState(false);
-  const [deletingImages, setDeletingImages] = useState<string[]>([]);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   // Error state for validation
@@ -109,7 +110,11 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
       onSave(updatedItem);
     } catch (error) {
       console.error("Fehler beim Löschen des Bildes:", error);
-      alert("Bild konnte nicht vollständig gelöscht werden.");
+      toast({
+        title: "Bild konnte nicht gelöscht werden",
+        description: "Bitte versuche es erneut.",
+        variant: "error",
+      });
     } finally {
       setIsProcessingImage(false);
     }
@@ -132,6 +137,9 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
 
         {/* HEADER - No changes needed, shrink-0 prevents it from collapsing */}
         <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+          <DialogDescription className="sr-only">
+            Titel, Status, Priorität, Datum, Tags, Notizen und Anhänge des Eintrags bearbeiten.
+          </DialogDescription>
           <div className="flex items-center justify-start gap-2">
             <Badge variant={formData.type === 'todo' ? 'default' : 'secondary'} className="uppercase text-[10px] tracking-wider font-semibold">
               {formData.type}
@@ -219,13 +227,20 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
                   {formData.tags.map(tag => (
                     <Badge key={tag} variant="secondary" className="pl-2 pr-1 h-6 font-normal text-xs flex items-center gap-1 bg-muted hover:bg-muted/80">
                       {tag}
-                      <button onClick={() => removeTag(tag)} className="text-muted-foreground hover:text-red-500 rounded-full p-0.5 ml-0.5"><X size={10} /></button>
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="text-muted-foreground hover:text-red-500 rounded-full p-0.5 ml-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label={`Tag ${tag} entfernen`}
+                      >
+                        <X size={10} />
+                      </button>
                     </Badge>
                   ))}
                   {showTagInput ? (
                     <Input autoFocus className="h-6 w-24 text-xs" placeholder="Tag..." value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addTag(); if (e.key === 'Escape') setShowTagInput(false); }} onBlur={addTag} />
                   ) : (
-                    <Button variant="ghost" size="sm" onClick={() => setShowTagInput(true)} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary rounded-full"><Plus size={14} /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => setShowTagInput(true)} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary rounded-full" aria-label="Tag hinzufügen"><Plus size={14} /></Button>
                   )}
                 </div>
               </div>
@@ -259,7 +274,8 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
                         <div key={url} className={cn("relative w-16 h-16 rounded-md overflow-hidden border bg-muted group", isProcessingImage && "opacity-50 pointer-events-none")}>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleRemoveImage(url); }}
-                            className="absolute top-0.5 right-0.5 z-10 bg-black/60 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-500 transition-all"
+                            className="absolute top-0.5 right-0.5 z-10 bg-black/60 text-white p-0.5 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100 hover:bg-red-500 transition-all"
+                            aria-label="Bild entfernen"
                           >
                             <X size={10} />
                           </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import { inputSchema } from "@/lib/schema";
 import { parseInput, ParsedResult } from "@/lib/parser";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ interface OmniBarProps {
 }
 
 export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const errorId = useId();
   const [inputValue, setInputValue] = useState("");
   const [parsedPreview, setParsedPreview] = useState<ParsedResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +58,7 @@ export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
     const validation = inputSchema.safeParse({ raw: inputValue });
 
     if (!validation.success) {
+      setError(validation.error.issues[0]?.message || "Bitte überprüfe deine Eingabe.");
       return;
     }
 
@@ -71,7 +74,7 @@ export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
     const words = inputValue.split(" ");
     words.pop();
     setInputValue([...words, `#${tag} `].join(" "));
-    // Refocus logic wäre hier gut
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const getPrioColor = (prio: string) => {
@@ -83,27 +86,47 @@ export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
     }
   };
 
+  const getPrioLabel = (prio: ParsedResult["priority"]) => {
+    switch (prio) {
+      case "high": return "hoch";
+      case "medium": return "mittel";
+      case "low": return "niedrig";
+      default: return "keine";
+    }
+  };
+
   return (
     <div className="relative z-20 space-y-2">
       <div className={`flex items-center gap-2 bg-background border rounded-md shadow-sm px-3 py-2 transition-all focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${error ? "border-red-500 ring-red-200" : ""}`}>
         <div className={`flex items-center justify-center w-6 h-6 rounded-sm shrink-0 transition-colors ${parsedPreview?.type === 'todo' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
           {parsedPreview?.type === 'todo' ? <CheckSquare size={14} /> : <StickyNote size={14} />}
+          <span className="sr-only">{parsedPreview?.type === "todo" ? "Aufgabe" : "Notiz"}</span>
         </div>
         <Input
+          ref={inputRef}
           autoFocus
           className="flex-1 border-0 shadow-none focus-visible:ring-0 px-2 h-auto text-sm placeholder:text-muted-foreground"
           placeholder="Eingabe... (z.B. todo Design Review #projektA !hoch)"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : undefined}
         />
-        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={handleSubmit}>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 text-muted-foreground hover:text-primary"
+          onClick={handleSubmit}
+          aria-label="Eintrag speichern"
+        >
           <Send size={16} />
         </Button>
       </div>
 
       {/* Validation Error Message */}
-      {error && <p className="text-xs text-red-500 px-1 animate-in slide-in-from-top-1">{error}</p>}
+      {error && <p id={errorId} role="alert" className="text-xs text-red-500 px-1 animate-in slide-in-from-top-1">{error}</p>}
 
       {/* Preview Badges */}
       {parsedPreview && !error && (
@@ -112,7 +135,7 @@ export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
             <Badge key={tag} variant="outline" className="border-primary/20 text-primary h-5 px-1.5 font-normal">#{tag}</Badge>
           ))}
           {parsedPreview.priority !== 'none' && (
-            <Badge variant="outline" className={`${getPrioColor(parsedPreview.priority)} h-5 px-1.5 font-normal`}>!{parsedPreview.priority}</Badge>
+            <Badge variant="outline" className={`${getPrioColor(parsedPreview.priority)} h-5 px-1.5 font-normal`}>!{getPrioLabel(parsedPreview.priority)}</Badge>
           )}
           {parsedPreview.dueDate && (
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-5 px-1.5 font-normal">
@@ -126,7 +149,7 @@ export function OmniBar({ onAddItem, allTags }: OmniBarProps) {
       {suggestions.length > 0 && (
         <div className="absolute top-full left-8 mt-1 w-48 bg-popover border rounded-md shadow-md py-1 z-50">
           {suggestions.map(tag => (
-            <button key={tag} className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted" onClick={() => applySuggestion(tag)}>#{tag}</button>
+            <button type="button" key={tag} className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted" onClick={() => applySuggestion(tag)}>#{tag}</button>
           ))}
         </div>
       )}

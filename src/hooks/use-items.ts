@@ -1,17 +1,24 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useStackApp } from "@stackframe/stack";
 import { Item } from "@/lib/schema";
 import { ItemService } from "@/services/item-service";
+import { useToast } from "@/components/ui/toast";
 
 export function useItems() {
   const app = useStackApp();
   const user = app.useUser(); // Get the currently logged-in user
+  const { toast, dismiss } = useToast();
 
   const [items, setItems] = useState<Item[]>([]);
   const [isLoaded, setIsLoaded] = useState(false); // Controls loading skeletons/spinners
   const [error, setError] = useState<Error | null>(null);
+  const itemsRef = useRef<Item[]>([]);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   // --- 1. Fetch Items on Load ---
   useEffect(() => {
@@ -29,13 +36,18 @@ export function useItems() {
       } catch (err) {
         console.error("Failed to load items:", err);
         setError(err as Error);
+        toast({
+          title: "Einträge konnten nicht geladen werden",
+          description: "Bitte prüfe deine Verbindung und lade die Seite erneut.",
+          variant: "error",
+        });
       } finally {
         setIsLoaded(true);
       }
     }
 
     loadItems();
-  }, [user]);
+  }, [user, toast]);
 
   // --- 2. Add Item (Optimistic) ---
   const addItem = useCallback(async (newItem: Item) => {
@@ -57,9 +69,13 @@ export function useItems() {
       console.error("Failed to create item:", err);
       // D. Rollback on failure: Remove the item
       setItems((prev) => prev.filter((item) => item.id !== tempId));
-      // Optional: Add a toast notification here
+      toast({
+        title: "Eintrag wurde nicht gespeichert",
+        description: "Deine Eingabe wurde zurückgesetzt. Bitte versuche es erneut.",
+        variant: "error",
+      });
     }
-  }, [user]);
+  }, [user, toast]);
 
   // --- 3. Update Item (Optimistic) ---
   const updateItem = useCallback(async (updatedItem: Item) => {
@@ -80,28 +96,88 @@ export function useItems() {
 
       // Rollback: Since we don't have the old item easily available here without 
       // passing it in arguments, a safe fallback is to reload the list from server.
-      const freshData = await ItemService.getAll(user);
-      setItems(freshData);
+      try {
+        const freshData = await ItemService.getAll(user);
+        setItems(freshData);
+      } catch (reloadError) {
+        console.error("Failed to reload items after update error:", reloadError);
+      }
+
+      toast({
+        title: "Änderung wurde nicht gespeichert",
+        description: "Der letzte gespeicherte Stand wurde wiederhergestellt.",
+        variant: "error",
+      });
     }
-  }, [user]);
+  }, [user, toast]);
 
   // --- 4. Delete Item (Optimistic) ---
-  const deleteItem = useCallback(async (id: string) => {
+  const deleteItem = useCallback((id: string) => {
     if (!user) return;
 
+    const previousItems = itemsRef.current;
+    const deletedIndex = previousItems.findIndex((item) => item.id === id);
+    const deletedItem = previousItems[deletedIndex];
+    if (!deletedItem) return;
+
+    const restoreLocally = (item: Item) => {
+      setItems((current) => {
+        if (current.some((existing) => existing.id === item.id)) return current;
+        const restored = [...current];
+        restored.splice(Math.min(deletedIndex, restored.length), 0, item);
+        return restored;
+      });
+    };
+
     // A. Optimistic Update
-    const previousItems = [...items];
     setItems((prev) => prev.filter((item) => item.id !== id));
 
-    try {
-      // B. Server Call
-      await ItemService.delete(user, id);
-    } catch (err) {
-      console.error("Failed to delete item:", err);
-      // C. Rollback
-      setItems(previousItems);
-    }
-  }, [items, user]);
+    let toastId = "";
+    const deletion = ItemService.delete(user, id)
+      .then(() => true)
+      .catch((err) => {
+        console.error("Failed to delete item:", err);
+        restoreLocally(deletedItem);
+        if (toastId) dismiss(toastId);
+        toast({
+          title: "Eintrag konnte nicht gelöscht werden",
+          description: "Der Eintrag wurde wiederhergestellt.",
+          variant: "error",
+        });
+        return false;
+      });
+
+    const undoDelete = async () => {
+      const wasDeleted = await deletion;
+      if (!wasDeleted) return;
+
+      try {
+        const restoredItem = await ItemService.restore(user, deletedItem);
+        restoreLocally(restoredItem);
+        toast({
+          title: "Löschen rückgängig gemacht",
+          variant: "success",
+        });
+      } catch (err) {
+        console.error("Failed to restore item:", err);
+        toast({
+          title: "Eintrag konnte nicht wiederhergestellt werden",
+          description: "Bitte lade die Seite neu und versuche es erneut.",
+          variant: "error",
+        });
+      }
+    };
+
+    toastId = toast({
+      title: "Eintrag gelöscht",
+      description: "Du kannst diese Aktion für kurze Zeit rückgängig machen.",
+      action: {
+        label: "Rückgängig",
+        onClick: undoDelete,
+      },
+      duration: 8000,
+    });
+  }, [dismiss, toast, user]);
 
   return {
     items,

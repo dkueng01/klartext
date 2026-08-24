@@ -18,7 +18,7 @@ export default function Home() {
   const { items, isLoaded, addItem, updateItem, deleteItem } = useItems();
 
   // Neuer Hook für URL-Filter statt lokalem State
-  const { activeTag, activePrio, activeDate } = useUrlFilters();
+  const { activeTag, activePrio, activeDate, setFilter } = useUrlFilters();
 
   const [editingItem, setEditingItem] = useState<Item | null>(null);
 
@@ -91,7 +91,7 @@ export default function Home() {
             if (item) updateItem({ ...item, status: item.status === 'done' ? 'todo' : 'done', isCompleted: !item.isCompleted });
           }}
           onEdit={setEditingItem}
-          onTagClick={() => { }}
+          onTagClick={(tag) => setFilter("tag", tag)}
         />
       </div>
 

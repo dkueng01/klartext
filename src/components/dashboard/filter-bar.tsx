@@ -151,6 +151,7 @@ export function FilterBar({ allTags }: FilterBarProps) {
               size="icon"
               className="h-7 w-7 rounded-full hover:bg-destructive/10 hover:text-destructive"
               onClick={clearFilters}
+              aria-label="Alle Filter zurücksetzen"
             >
               <X size={14} />
             </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Item } from "@/lib/schema";
-import { format, isSameDay } from "date-fns";
+import { format, isPast, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { CheckCircle2, Circle, StickyNote, Trash2, Calendar, Flag, ImageIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,8 +40,11 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
   };
 
   return (
-    <ScrollArea className="h-full px-2 w-full">
-      <div className="pb-10 pt-2 space-y-2 max-w-full">
+    <ScrollArea
+      className="h-full w-full px-2"
+      viewportClassName="overflow-x-hidden [&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
+    >
+      <div className="w-full min-w-0 max-w-full space-y-2 pb-10 pt-2">
         {items.map((item, index) => {
           const isToday = isSameDay(item.createdAt, new Date());
           const prevItem = items[index - 1];
@@ -60,9 +63,19 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
 
               <div
                 onClick={() => onEdit(item)}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onEdit(item);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`${item.type === "todo" ? "Aufgabe" : "Notiz"} bearbeiten: ${item.content}`}
                 className={cn(
                   "group relative flex items-start gap-3 p-3 rounded-lg border bg-card transition-all duration-200",
-                  "hover:border-primary/30 cursor-pointer w-full max-w-full overflow-hidden",
+                  "hover:border-primary/30 cursor-pointer w-full min-w-0 max-w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   item.status === 'done' && "opacity-60 bg-muted/20 border-transparent"
                 )}
               >
@@ -71,7 +84,8 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
                   {item.type === 'todo' ? (
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggle(item.id); }}
-                      className="text-muted-foreground hover:text-primary transition-colors focus:outline-none"
+                      className="rounded-full text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={item.status === "done" ? `Aufgabe „${item.content}“ wieder öffnen` : `Aufgabe „${item.content}“ erledigen`}
                     >
                       {item.status === 'done'
                         ? <CheckCircle2 size={18} className="text-green-600" />
@@ -107,13 +121,15 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
                     </span>
 
                     {item.tags.map(tag => (
-                      <Badge
-                        key={tag}
-                        variant="secondary"
-                        onClick={(e) => { e.stopPropagation(); onTagClick(tag); }}
-                        className="text-[9px] px-1 h-4 font-normal text-muted-foreground bg-muted hover:text-primary hover:bg-primary/10 border-0 cursor-pointer shrink-0"
-                      >
-                        #{tag}
+                      <Badge key={tag} variant="secondary" asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onTagClick(tag); }}
+                          className="h-5 shrink-0 cursor-pointer border-0 bg-muted px-1.5 text-[10px] font-normal text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          aria-label={`Nach Tag ${tag} filtern`}
+                        >
+                          #{tag}
+                        </button>
                       </Badge>
                     ))}
 
@@ -126,7 +142,9 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
                     {item.dueDate && !item.isCompleted && (
                       <span className={cn(
                         "flex items-center gap-0.5 text-[9px] px-1 rounded border shrink-0",
-                        new Date(item.dueDate) < new Date() ? "text-red-600 bg-red-50 border-red-100" : "text-green-600 bg-green-50 border-green-100"
+                        isPast(new Date(item.dueDate)) && !isSameDay(new Date(item.dueDate), new Date())
+                          ? "text-red-600 bg-red-50 border-red-100 dark:bg-red-950/30 dark:border-red-900/40"
+                          : "text-green-600 bg-green-50 border-green-100 dark:bg-green-950/30 dark:border-green-900/40"
                       )}>
                         <Calendar size={8} />
                         {format(new Date(item.dueDate), "dd.MM")}
@@ -146,8 +164,9 @@ export function JournalView({ items, onToggle, onDelete, onEdit, onTagClick }: J
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-6 w-6 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10"
+                    className="h-7 w-7 text-muted-foreground/60 opacity-100 hover:text-destructive hover:bg-destructive/10 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                     onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+                    aria-label={`Eintrag „${item.content}“ löschen`}
                   >
                     <Trash2 size={12} />
                   </Button>

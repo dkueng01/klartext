@@ -90,6 +90,41 @@ export const ItemService = {
     } as Item;
   },
 
+  async restore(user: CurrentUser, item: Item): Promise<Item> {
+    const validated = createItemSchema.parse(item);
+
+    await UserService.ensureUserExists(user);
+    const pg = await getApiClient(user);
+
+    const { data, error } = await pg
+      .from("items")
+      .insert({
+        id: item.id,
+        user_id: user.id,
+        content: validated.content,
+        description: validated.description,
+        type: validated.type,
+        status: validated.status,
+        tags: validated.tags,
+        priority: validated.priority,
+        due_date: validated.dueDate ? validated.dueDate.toISOString() : null,
+        images: validated.images || [],
+        created_at: item.createdAt.toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      dueDate: data.due_date ? new Date(data.due_date) : null,
+      createdAt: new Date(data.created_at),
+      isCompleted: data.status === "done",
+      images: data.images || [],
+    } as Item;
+  },
+
   async delete(user: CurrentUser, id: string): Promise<void> {
     const pg = await getApiClient(user);
     const { error } = await pg.from("items").delete().eq("id", id);
