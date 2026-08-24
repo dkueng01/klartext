@@ -136,18 +136,17 @@ export default function TodayPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-7 pb-4 sm:space-y-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            <SunMedium className="size-4 text-amber-500" aria-hidden="true" />
-            {format(now, "EEEE, d. MMMM", { locale: de })}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2.5">
+          <SunMedium className="size-4 shrink-0 text-amber-500" aria-hidden="true" />
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
+              Hallo{firstName ? ` ${firstName}` : ""}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {format(now, "EEE, d. MMMM", { locale: de })}
+            </p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            {getGreeting(now.getHours())}{firstName ? `, ${firstName}` : ""}.
-          </h1>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Ein kurzer Blick, ein klarer Fokus – dann kannst du loslegen.
-          </p>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -162,13 +161,7 @@ export default function TodayPage() {
         </div>
       </header>
 
-      <section aria-labelledby="quick-capture-title" className="space-y-2.5">
-        <div className="flex items-center justify-between px-1">
-          <div>
-            <h2 id="quick-capture-title" className="text-sm font-semibold">Schnell festhalten</h2>
-            <p className="text-xs text-muted-foreground">Raus aus dem Kopf, ohne den Fokus zu verlieren.</p>
-          </div>
-        </div>
+      <section aria-label="Schnell festhalten" className="space-y-2.5">
         <OmniBar onAddItem={handleOmniAdd} allTags={allTags} defaultType="todo" />
       </section>
 
@@ -610,12 +603,6 @@ function TodaySkeleton() {
       </div>
     </div>
   );
-}
-
-function getGreeting(hour: number) {
-  if (hour < 11) return "Guten Morgen";
-  if (hour < 17) return "Guten Tag";
-  return "Guten Abend";
 }
 
 function priorityLabel(priority: Item["priority"]) {
