@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Trash2, Calendar as CalendarIcon, Flag, Clock, Plus, X, Circle, Hash, ImageIcon, ExternalLink, Loader2, ListTodo, StickyNote } from "lucide-react";
-import { format } from "date-fns";
+import { Trash2, Calendar as CalendarIcon, Flag, Clock, Plus, X, Circle, Hash, ImageIcon, ExternalLink, Loader2, ListTodo, StickyNote, ChevronDown } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ImageUpload } from "../ui/image-upload";
@@ -22,16 +22,19 @@ interface EditItemDialogProps {
   item: Item | null;
   open: boolean;
   onClose: () => void;
-  onSave: (item: Item) => void;
+  onSave: (item: Item) => void | boolean | Promise<void | boolean>;
   onDelete: (id: string) => void;
+  isNew?: boolean;
+  onOpenSource?: () => void;
 }
 
-export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditItemDialogProps) {
+export function EditItemDialog({ item, open, onClose, onSave, onDelete, isNew = false, onOpenSource }: EditItemDialogProps) {
   const { toast } = useToast();
   const [formData, setFormData] = useState<Item | null>(null);
   const [newTag, setNewTag] = useState("");
   const [showTagInput, setShowTagInput] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Error state for validation
   const [error, setError] = useState<string | null>(null);
@@ -43,14 +46,20 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
     }
   }, [item]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return;
     if (formData) {
       if (!formData.content.trim()) {
         setError("Der Titel darf nicht leer sein.");
         return;
       }
-      onSave(formData);
-      onClose();
+      setIsSaving(true);
+      try {
+        const saved = await onSave(formData);
+        if (saved !== false) onClose();
+      } catch {
+        setError("Änderung konnte nicht gespeichert werden. Bitte erneut versuchen.");
+      } finally { setIsSaving(false); }
     }
   };
 
@@ -83,7 +92,7 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
     setFormData({
       ...formData,
       type,
-      ...(type === "note" ? { status: "todo" as const, priority: "none" as const, dueDate: null } : {}),
+      ...(type === "note" ? { status: "todo" as const, priority: "none" as const, dueDate: null, plannedFor: null, focusedOn: null, completedAt: null, waitingFor: null, reviewOn: null, sourceNoteId: null } : { pinned: false }),
     });
   };
 
@@ -97,7 +106,7 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
     setFormData(updatedItem);
 
     // 2. DB Update sofort (Auto-Save)
-    onSave(updatedItem);
+    if (!isNew) void onSave(updatedItem);
   };
 
   const handleRemoveImage = async (urlToRemove: string) => {
@@ -116,7 +125,7 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
       setFormData(updatedItem);
 
       // 4. DB Update sofort (Auto-Save)
-      onSave(updatedItem);
+      if (!isNew) await onSave(updatedItem);
     } catch (error) {
       console.error("Fehler beim Löschen des Bildes:", error);
       toast({
@@ -141,7 +150,7 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
   if (!formData) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !isSaving && onClose()}>
       <DialogContent className="sm:max-w-[600px] max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col outline-none">
 
         {/* HEADER - No changes needed, shrink-0 prevents it from collapsing */}
@@ -235,7 +244,7 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant={"ghost"} className={cn("h-7 w-auto min-w-[140px] justify-start text-left font-normal text-xs px-2 -ml-2 hover:bg-muted/50", !formData.dueDate && "text-muted-foreground")}>
-                        {formData.dueDate ? format(new Date(formData.dueDate), "PPP", { locale: de }) : <span>Nicht geplant</span>}
+                        {formData.dueDate ? format(new Date(formData.dueDate), "PPP", { locale: de }) : <span>Keine Fälligkeit</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -272,6 +281,32 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
                 </div>
               </div>
             </div>
+
+            {formData.type === "todo" && <details key={formData.id} className="group/workflow mb-4 border-t pt-2">
+              <summary className="flex min-h-10 cursor-pointer list-none flex-wrap items-center gap-2 rounded text-xs font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                <ChevronDown className="size-3.5 transition-transform group-open/workflow:rotate-180" />
+                Tagesplanung & nächste Schritte
+                {(formData.waitingFor || formData.plannedFor) && <span className="ml-auto text-[11px] font-normal">{formData.waitingFor ? "Wartet auf Rückmeldung" : `Eingeplant ${format(parseISO(formData.plannedFor!), "dd.MM.")}`}</span>}
+              </summary>
+              <div className="space-y-3 pt-3">
+              <label className="block space-y-1.5 text-xs text-muted-foreground">Nächster Schritt
+                <Input maxLength={500} aria-label="Nächster Schritt" value={formData.nextStep ?? ""} placeholder="Was ist konkret als Nächstes zu tun?" onChange={e => setFormData({ ...formData, nextStep: e.target.value || null })} />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-1.5 text-xs text-muted-foreground">Eingeplant für
+                  <Input type="date" aria-label="Eingeplant für" value={formData.plannedFor ?? ""} onChange={e => setFormData({ ...formData, plannedFor: e.target.value || null })} />
+                </label>
+                <label className="block space-y-1.5 text-xs text-muted-foreground">Wartet auf
+                  <Input maxLength={200} aria-label="Wartet auf" value={formData.waitingFor ?? ""} placeholder="Person oder Rückmeldung" onChange={e => setFormData({ ...formData, waitingFor: e.target.value || null, reviewOn: e.target.value ? formData.reviewOn : null })} />
+                </label>
+              </div>
+              {formData.waitingFor && <label className="block space-y-1.5 text-xs text-muted-foreground">Wiedervorlage
+                <Input type="date" aria-label="Wiedervorlage" value={formData.reviewOn ?? ""} onChange={e => setFormData({ ...formData, reviewOn: e.target.value || null })} />
+              </label>}
+              </div>
+            </details>}
+            {formData.sourceNoteId && <div className="mb-4 text-xs text-muted-foreground">{onOpenSource ? <Button type="button" variant="link" size="sm" className="h-auto px-0 text-xs" onClick={onOpenSource}><StickyNote className="size-3" />Ursprungsnotiz öffnen</Button> : "Aus einer Notiz abgeleitet"}</div>}
+            {formData.type === "note" && <label className="mb-4 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={!!formData.pinned} onChange={e => setFormData({ ...formData, pinned: e.target.checked })} />Auf Heute anheften</label>}
 
             {/* DESCRIPTION */}
             <div className="space-y-2 pt-4 border-t">
@@ -330,19 +365,20 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete }: EditIt
 
         {/* FOOTER */}
         <DialogFooter className="px-6 py-3 bg-muted/20 border-t flex sm:justify-between items-center w-full shrink-0">
-          <Button
+          {!isNew && <Button
             variant="ghost"
             size="sm"
             onClick={handleDelete}
+            disabled={isSaving}
             className="text-muted-foreground hover:text-red-600 hover:bg-red-50 h-8 px-2 text-xs"
           >
             <Trash2 size={14} className="mr-2" />
             Löschen
-          </Button>
+          </Button>}
 
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 text-xs">Abbrechen</Button>
-            <Button onClick={handleSave} size="sm" className="h-8 text-xs">Fertig</Button>
+            <Button variant="ghost" size="sm" onClick={onClose} disabled={isSaving} className="h-8 text-xs">Abbrechen</Button>
+            <Button onClick={() => void handleSave()} disabled={isSaving || isProcessingImage} size="sm" className="h-8 text-xs">{isSaving ? "Speichern …" : isNew ? "Aufgabe erstellen" : "Fertig"}</Button>
           </div>
         </DialogFooter>
 

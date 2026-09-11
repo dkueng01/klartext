@@ -105,6 +105,8 @@ export default function TasksPage() {
         onClose={() => setEditingItem(null)}
         onSave={updateItem}
         onDelete={deleteItem}
+        onOpenSource={items.some(item => item.id === editingItem?.sourceNoteId && item.type === "note")
+          ? () => setEditingItem(items.find(item => item.id === editingItem?.sourceNoteId) ?? null) : undefined}
       />
     </div>
   );

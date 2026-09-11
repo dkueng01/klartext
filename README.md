@@ -2,6 +2,20 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Today workflow database setup
+
+Run `migrations/20260911_today.sql` once in the Neon SQL Editor for the database
+used by `NEXT_PUBLIC_NEON_DATA_API_URL`. It adds calendar-day planning, atomic
+focus switching, completion timestamps, next steps, pinned notes, follow-up
+dates, and note references. Existing deadlines and completion history are not
+rewritten; historical completion times remain unknown. The migration retains
+the existing row-level security policies. After running it, open **Data API →
+Refresh schema cache** in Neon so the API exposes the new columns and function.
+
+Run `npm test` (Node 22.18+) for day selection and storage tests, and `npm run build`
+for a production build. `tests/workflow.sql` checks database transitions inside
+a transaction that rolls back all fixture data and changes.
+
 First, run the development server:
 
 ```bash

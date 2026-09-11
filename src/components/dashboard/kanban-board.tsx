@@ -239,6 +239,7 @@ function KanbanCardContent({ item, isOverlay }: { item: Item, isOverlay?: boolea
         {/* Bereiche & Meta */}
         <div className="pl-6 flex flex-wrap items-center gap-2">
           {/* Priority Icon */}
+          {item.waitingFor && <span className="text-[10px] text-muted-foreground">Wartet auf Rückmeldung</span>}
           {item.priority !== 'none' && (
             <div title={`Prio: ${item.priority}`}>{getPrioIcon(item.priority)}</div>
           )}
@@ -322,8 +323,8 @@ function ListItem({ item, onEdit, onUpdateStatus, isDone }: { item: Item, onEdit
       </div>
 
       {/* Status Badge (in List View) */}
-      {item.status === 'in_progress' && (
-        <Badge variant="secondary" className="text-[10px] bg-yellow-50 text-yellow-700 hover:bg-yellow-100">In Arbeit</Badge>
+      {(item.waitingFor || item.status === 'in_progress') && (
+        <Badge variant="secondary" className="text-[10px]">{item.waitingFor ? "Wartet" : "In Arbeit"}</Badge>
       )}
     </div>
   )

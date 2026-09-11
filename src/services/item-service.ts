@@ -1,129 +1,59 @@
 import { getApiClient } from "@/lib/api-client";
 import { createItemSchema, Item, updateItemSchema } from "@/lib/schema";
+import { itemFromRow, itemToRow } from "@/lib/item-storage";
 import { CurrentUser } from "@stackframe/stack";
 import { UserService } from "./user-service";
 
 export const ItemService = {
   async getAll(user: CurrentUser): Promise<Item[]> {
     const pg = await getApiClient(user);
-
-    const { data, error } = await pg
-      .from("items")
-      .select("*")
-      .order("created_at", { ascending: false });
-
+    const { data, error } = await pg.from("items").select("*").order("created_at", { ascending: false });
     if (error) throw error;
-
-    return data.map((row: any) => ({
-      ...row,
-      dueDate: row.due_date ? new Date(row.due_date) : null,
-      createdAt: new Date(row.created_at),
-      images: row.images || []
-    })) as Item[];
+    return data.map(itemFromRow);
   },
 
   async create(user: CurrentUser, item: Partial<Item>): Promise<Item> {
-    // 1. Validation
     const validated = createItemSchema.parse(item);
-
     await UserService.ensureUserExists(user);
     const pg = await getApiClient(user);
-
-    const { data, error } = await pg
-      .from("items")
-      .insert({
-        user_id: user.id,
-        content: validated.content, // use validated data
-        description: validated.description,
-        type: validated.type,
-        status: validated.status,
-        tags: validated.tags,
-        priority: validated.priority,
-        due_date: validated.dueDate ? validated.dueDate.toISOString() : null,
-        images: validated.images || []
-      })
-      .select()
-      .single();
-
+    const { data, error } = await pg.from("items")
+      .insert({ user_id: user.id, ...itemToRow(validated) }).select().single();
     if (error) throw error;
-
-    return {
-      ...data,
-      dueDate: data.due_date ? new Date(data.due_date) : null,
-      createdAt: new Date(data.created_at)
-    } as Item;
+    return itemFromRow(data);
   },
 
   async update(user: CurrentUser, id: string, updates: Partial<Item>): Promise<Item> {
-    // 1. Validation
     const validated = updateItemSchema.parse(updates);
-
     const pg = await getApiClient(user);
-
-    // Map updates to snake_case
-    const dbUpdates: any = {};
-    if (validated.content !== undefined) dbUpdates.content = validated.content;
-    if (validated.description !== undefined) dbUpdates.description = validated.description;
-    if (validated.status !== undefined) dbUpdates.status = validated.status;
-    if (validated.type !== undefined) dbUpdates.type = validated.type;
-    if (validated.priority !== undefined) dbUpdates.priority = validated.priority;
-    if (validated.tags !== undefined) dbUpdates.tags = validated.tags;
-    if (validated.dueDate !== undefined) dbUpdates.due_date = validated.dueDate ? validated.dueDate.toISOString() : null;
-    if (validated.images !== undefined) dbUpdates.images = validated.images;
-
-    const { data, error } = await pg
-      .from("items")
-      .update(dbUpdates)
-      .eq("id", id)
-      .select()
-      .single();
-
+    const { data, error } = await pg.from("items").update(itemToRow(validated)).eq("id", id).select().single();
     if (error) throw error;
+    return itemFromRow(data);
+  },
 
-    return {
-      ...data,
-      dueDate: data.due_date ? new Date(data.due_date) : null,
-      createdAt: new Date(data.created_at)
-    } as Item;
+  async focus(user: CurrentUser, id: string, day: string): Promise<Item[]> {
+    const pg = await getApiClient(user);
+    const { data, error } = await pg.rpc("set_today_focus", { target_id: id, target_day: day });
+    if (error) throw error;
+    if (!data?.some((row: { id: string }) => row.id === id)) throw new Error("Task is no longer available");
+    return data.map(itemFromRow);
   },
 
   async restore(user: CurrentUser, item: Item): Promise<Item> {
     const validated = createItemSchema.parse(item);
-
     await UserService.ensureUserExists(user);
     const pg = await getApiClient(user);
-
-    const { data, error } = await pg
-      .from("items")
-      .insert({
-        id: item.id,
-        user_id: user.id,
-        content: validated.content,
-        description: validated.description,
-        type: validated.type,
-        status: validated.status,
-        tags: validated.tags,
-        priority: validated.priority,
-        due_date: validated.dueDate ? validated.dueDate.toISOString() : null,
-        images: validated.images || [],
-        created_at: item.createdAt.toISOString(),
-      })
-      .select()
-      .single();
-
+    const { data, error } = await pg.from("items").insert({
+      ...itemToRow(validated), id: item.id, user_id: user.id,
+      focused_on: null, completed_at: item.completedAt?.toISOString() ?? null,
+      created_at: item.createdAt.toISOString(),
+    }).select().single();
     if (error) throw error;
-
-    return {
-      ...data,
-      dueDate: data.due_date ? new Date(data.due_date) : null,
-      createdAt: new Date(data.created_at),
-      images: data.images || [],
-    } as Item;
+    return itemFromRow(data);
   },
 
   async delete(user: CurrentUser, id: string): Promise<void> {
     const pg = await getApiClient(user);
     const { error } = await pg.from("items").delete().eq("id", id);
     if (error) throw error;
-  }
+  },
 };

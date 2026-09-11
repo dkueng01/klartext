@@ -16,6 +16,8 @@ export function useItems() {
   const [isLoaded, setIsLoaded] = useState(false); // Controls loading skeletons/spinners
   const [error, setError] = useState<Error | null>(null);
   const itemsRef = useRef<Item[]>([]);
+  const busyRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -23,6 +25,7 @@ export function useItems() {
 
   // --- 1. Fetch Items on Load ---
   useEffect(() => {
+    let active = true;
     async function loadItems() {
       if (!user) {
         // If no user is logged in, we are technically "loaded" but have no data
@@ -33,8 +36,11 @@ export function useItems() {
 
       try {
         const data = await ItemService.getAll(user);
+        if (!active) return;
         setItems(data);
+        setError(null);
       } catch (err) {
+        if (!active) return;
         console.error("Failed to load items:", err);
         setError(err as Error);
         toast({
@@ -43,16 +49,19 @@ export function useItems() {
           variant: "error",
         });
       } finally {
-        setIsLoaded(true);
+        if (active) setIsLoaded(true);
       }
     }
 
     loadItems();
+    return () => { active = false; };
   }, [user, toast]);
 
   // --- 2. Add Item (Optimistic) ---
   const addItem = useCallback(async (newItem: Item) => {
-    if (!user) return;
+    if (!user || busyRef.current) return;
+    busyRef.current = true;
+    setIsSaving(true);
 
     // A. Optimistic Update: Add to UI immediately with the temporary ID
     const tempId = newItem.id;
@@ -66,21 +75,31 @@ export function useItems() {
       setItems((prev) =>
         prev.map((item) => (item.id === tempId ? createdItem : item))
       );
+      return createdItem;
     } catch (err) {
       console.error("Failed to create item:", err);
       // D. Rollback on failure: Remove the item
       setItems((prev) => prev.filter((item) => item.id !== tempId));
       toast({
         title: "Eintrag wurde nicht gespeichert",
-        description: "Deine Eingabe wurde zurückgesetzt. Bitte versuche es erneut.",
+        description: "Bitte versuche es erneut.",
         variant: "error",
       });
+    } finally {
+      busyRef.current = false;
+      setIsSaving(false);
     }
   }, [user, toast]);
 
   // --- 3. Update Item (Optimistic) ---
   const updateItem = useCallback(async (updatedItem: Item) => {
-    if (!user) return;
+    if (!user) return false;
+    if (busyRef.current) {
+      toast({ title: "Eine Änderung wird noch gespeichert", description: "Bitte versuche es gleich noch einmal." });
+      return false;
+    }
+    busyRef.current = true;
+    setIsSaving(true);
 
     const previousItem = itemsRef.current.find((item) => item.id === updatedItem.id);
     const wasJustCompleted =
@@ -88,30 +107,33 @@ export function useItems() {
       previousItem.status !== "done" &&
       updatedItem.status === "done";
 
-    if (wasJustCompleted) {
-      document.dispatchEvent(new CustomEvent(TASK_COMPLETED_EVENT));
-    }
-
-    // Snapshot previous state in case we need to rollback
-    // (React state updates don't give us easy access to 'previous' outside the setter, 
-    // so we assume the UI state was correct before this call)
+    const optimisticItem = {
+      ...updatedItem,
+      completedAt: updatedItem.type === "todo" && updatedItem.status === "done"
+        ? (wasJustCompleted ? new Date() : previousItem?.completedAt) : null,
+      focusedOn: updatedItem.type === "note" || updatedItem.status === "done" || updatedItem.waitingFor
+        || updatedItem.plannedFor !== updatedItem.focusedOn ? null : updatedItem.focusedOn,
+    };
 
     setItems((prev) => {
-      return prev.map((item) => (item.id === updatedItem.id ? updatedItem : item));
+      return prev.map((item) => (item.id === updatedItem.id ? optimisticItem : item));
     });
 
     try {
-      await ItemService.update(user, updatedItem.id, updatedItem);
+      const saved = await ItemService.update(user, updatedItem.id, updatedItem);
+      setItems(prev => prev.map(item => item.id === saved.id ? saved : item));
+      if (wasJustCompleted) document.dispatchEvent(new CustomEvent(TASK_COMPLETED_EVENT));
+      return true;
     } catch (err) {
-      console.error("Failed to update item:", err);
+      console.error("Failed to update item:", JSON.stringify(err));
 
-      // Rollback: Since we don't have the old item easily available here without 
-      // passing it in arguments, a safe fallback is to reload the list from server.
+      // Prefer the authoritative server state after an uncertain response.
       try {
         const freshData = await ItemService.getAll(user);
         setItems(freshData);
       } catch (reloadError) {
         console.error("Failed to reload items after update error:", reloadError);
+        if (previousItem) setItems(prev => prev.map(item => item.id === previousItem.id ? previousItem : item));
       }
 
       toast({
@@ -119,12 +141,48 @@ export function useItems() {
         description: "Der letzte gespeicherte Stand wurde wiederhergestellt.",
         variant: "error",
       });
+      return false;
+    } finally {
+      busyRef.current = false;
+      setIsSaving(false);
+    }
+  }, [user, toast]);
+
+  const patchItem = useCallback((id: string, patch: Partial<Item>) => {
+    const current = itemsRef.current.find(item => item.id === id);
+    return current ? updateItem({ ...current, ...patch }) : Promise.resolve(false);
+  }, [updateItem]);
+
+  const focusItem = useCallback(async (id: string, day: string) => {
+    if (!user || busyRef.current) return false;
+    busyRef.current = true;
+    setIsSaving(true);
+    const previous = itemsRef.current;
+    setItems(current => current.map(item => item.id === id
+      ? { ...item, focusedOn: day, plannedFor: day, status: "in_progress" }
+      : { ...item, focusedOn: null }));
+    try {
+      const changed = await ItemService.focus(user, id, day);
+      setItems(current => current.map(item => changed.find(saved => saved.id === item.id) ?? item));
+      return true;
+    } catch (err) {
+      console.error("Failed to set focus:", JSON.stringify(err));
+      try { setItems(await ItemService.getAll(user)); } catch { setItems(previous); }
+      toast({ title: "Fokus wurde nicht gespeichert", description: "Bitte versuche es erneut.", variant: "error" });
+      return false;
+    } finally {
+      busyRef.current = false;
+      setIsSaving(false);
     }
   }, [user, toast]);
 
   // --- 4. Delete Item (Optimistic) ---
   const deleteItem = useCallback((id: string) => {
     if (!user) return;
+    if (busyRef.current) {
+      toast({ title: "Eine Änderung wird noch gespeichert", description: "Bitte versuche es gleich noch einmal." });
+      return;
+    }
 
     const previousItems = itemsRef.current;
     const deletedIndex = previousItems.findIndex((item) => item.id === id);
@@ -193,9 +251,12 @@ export function useItems() {
   return {
     items,
     isLoaded,
+    isSaving,
     error,
     addItem,
     updateItem,
+    patchItem,
+    focusItem,
     deleteItem
   };
 }

@@ -14,11 +14,19 @@ const itemBase = {
   tags: z.array(z.string()),
   priority: z.enum(["low", "medium", "high", "none"]),
   dueDate: z.date().nullable(),
+  plannedFor: z.iso.date().nullable().optional(),
+  focusedOn: z.iso.date().nullable().optional(),
+  nextStep: z.string().trim().max(500).nullable().optional(),
+  pinned: z.boolean().optional(),
+  waitingFor: z.string().trim().max(200).nullable().optional(),
+  reviewOn: z.iso.date().nullable().optional(),
+  sourceNoteId: z.uuid().nullable().optional(),
 };
 
 export const itemSchema = z.object({
   id: z.string(),
   createdAt: z.date(),
+  completedAt: z.date().nullable().optional(),
   ...itemBase
 });
 

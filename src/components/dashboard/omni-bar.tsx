@@ -1,30 +1,37 @@
 "use client";
 
-import { useState, useEffect, useId, useRef } from "react";
+import { useState, useEffect, useId, useRef, type ReactNode } from "react";
 import { inputSchema, Item } from "@/lib/schema";
 import { parseInput, ParsedResult } from "@/lib/parser";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { CheckSquare, StickyNote, Send, Calendar } from "lucide-react";
+import { CheckSquare, StickyNote, Send, Calendar, SlidersHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 interface OmniBarProps {
-  onAddItem: (parsed: ParsedResult) => void;
+  onAddItem: (parsed: ParsedResult) => void | boolean | Promise<void | boolean>;
   allTags: string[];
   defaultType?: Item["type"];
+  disabled?: boolean;
+  compact?: boolean;
+  children?: ReactNode;
 }
 
-export function OmniBar({ onAddItem, allTags, defaultType = "note" }: OmniBarProps) {
+export function OmniBar({ onAddItem, allTags, defaultType = "note", disabled = false, compact = false, children }: OmniBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const errorId = useId();
+  const optionsId = useId();
+  const [showOptions, setShowOptions] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [parsedPreview, setParsedPreview] = useState<ParsedResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [entryType, setEntryType] = useState<Item["type"]>(defaultType);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     const selectEntryType = (event: Event) => {
@@ -68,7 +75,8 @@ export function OmniBar({ onAddItem, allTags, defaultType = "note" }: OmniBarPro
     setParsedPreview(parseInput(inputValue, entryType));
   }, [inputValue, entryType]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (disabled || submittingRef.current) return;
     // Strikte Validierung beim Absenden
     const validation = inputSchema.safeParse({ raw: inputValue });
 
@@ -77,10 +85,20 @@ export function OmniBar({ onAddItem, allTags, defaultType = "note" }: OmniBarPro
       return;
     }
 
-    onAddItem(parseInput(inputValue, entryType));
-    setInputValue("");
-    setParsedPreview(null);
-    setError(null);
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    try {
+      const saved = await onAddItem(parseInput(inputValue, entryType));
+      if (saved === false) return;
+      setInputValue("");
+      setParsedPreview(null);
+      setError(null);
+    } catch {
+      setError("Eintrag konnte nicht gespeichert werden. Deine Eingabe bleibt erhalten.");
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (value: string) => {
@@ -116,7 +134,8 @@ export function OmniBar({ onAddItem, allTags, defaultType = "note" }: OmniBarPro
 
   return (
     <div className="relative z-20 space-y-2">
-      <div className="flex items-center justify-between gap-3">
+      <div id={optionsId} hidden={compact && !showOptions} className={cn("space-y-3", compact && "rounded-lg border bg-muted/10 p-3")}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-lg bg-muted p-1" role="group" aria-label="Art des neuen Eintrags">
           <Button
             type="button"
@@ -125,6 +144,7 @@ export function OmniBar({ onAddItem, allTags, defaultType = "note" }: OmniBarPro
             className={cn("h-7 px-2.5 text-xs", entryType === "todo" && "bg-background shadow-sm")}
             onClick={() => setEntryType("todo")}
             aria-pressed={entryType === "todo"}
+            disabled={disabled || isSubmitting}
           >
             <CheckSquare /> Aufgabe
           </Button>
@@ -135,11 +155,14 @@ export function OmniBar({ onAddItem, allTags, defaultType = "note" }: OmniBarPro
             className={cn("h-7 px-2.5 text-xs", entryType === "note" && "bg-background shadow-sm")}
             onClick={() => setEntryType("note")}
             aria-pressed={entryType === "note"}
+            disabled={disabled || isSubmitting}
           >
             <StickyNote /> Notiz
           </Button>
         </div>
         <span className="hidden text-[11px] text-muted-foreground sm:inline">#Bereich · !Priorität · @Datum</span>
+      </div>
+      {entryType === "todo" && children}
       </div>
 
       <div className={`flex items-center gap-2 bg-background border rounded-md shadow-sm px-3 py-2 transition-all focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${error ? "border-red-500 ring-red-200" : ""}`}>
@@ -149,23 +172,28 @@ export function OmniBar({ onAddItem, allTags, defaultType = "note" }: OmniBarPro
         </div>
         <Input
           ref={inputRef}
+          disabled={disabled || isSubmitting}
           data-quick-capture="true"
-          autoFocus
+          autoFocus={!compact}
           className="flex-1 border-0 shadow-none focus-visible:ring-0 px-2 h-auto text-sm placeholder:text-muted-foreground"
           placeholder={entryType === "todo" ? "Was möchtest du erledigen?" : "Was möchtest du festhalten?"}
           value={inputValue}
           onChange={(e) => handleInputChange(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) void handleSubmit(); }}
           aria-label={entryType === "todo" ? "Neue Aufgabe" : "Neue Notiz"}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
         />
+        {compact && <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground"
+          aria-label="Erfassungsoptionen" aria-expanded={showOptions} aria-controls={optionsId}
+          onClick={() => setShowOptions(current => !current)}><SlidersHorizontal size={16} /></Button>}
         <Button
           type="button"
           size="icon"
           variant="ghost"
           className="h-8 w-8 text-muted-foreground hover:text-primary"
           onClick={handleSubmit}
+          disabled={disabled || isSubmitting}
           aria-label={entryType === "todo" ? "Aufgabe speichern" : "Notiz speichern"}
         >
           <Send size={16} />

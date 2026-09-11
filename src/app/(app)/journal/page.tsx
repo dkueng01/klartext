@@ -52,8 +52,8 @@ export default function JournalPage() {
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
   );
 
-  const handleOmniAdd = (parsed: ParsedResult) => {
-    addItem({
+  const handleOmniAdd = async (parsed: ParsedResult) => {
+    const created = await addItem({
       id: Math.random().toString(36).slice(2, 11),
       content: parsed.content,
       type: parsed.type,
@@ -65,6 +65,7 @@ export default function JournalPage() {
       description: "",
       images: [],
     });
+    return !!created;
   };
 
   if (!isLoaded) return <JournalSkeleton />;
@@ -126,6 +127,8 @@ export default function JournalPage() {
         onClose={() => setEditingItem(null)}
         onSave={updateItem}
         onDelete={deleteItem}
+        onOpenSource={items.some(item => item.id === editingItem?.sourceNoteId && item.type === "note")
+          ? () => setEditingItem(items.find(item => item.id === editingItem?.sourceNoteId) ?? null) : undefined}
       />
     </div>
   );
