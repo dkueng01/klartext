@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Trash2, Calendar as CalendarIcon, Flag, Clock, Plus, X, Circle, Hash, ImageIcon, ExternalLink, Loader2, ListTodo, StickyNote, ChevronDown } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { Trash2, Calendar as CalendarIcon, Flag, Clock, Plus, X, Circle, Hash, ImageIcon, ExternalLink, Loader2, ListTodo, StickyNote } from "lucide-react";
+import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ImageUpload } from "../ui/image-upload";
@@ -282,29 +282,6 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete, isNew = 
               </div>
             </div>
 
-            {formData.type === "todo" && <details key={formData.id} className="group/workflow mb-4 border-t pt-2">
-              <summary className="flex min-h-10 cursor-pointer list-none flex-wrap items-center gap-2 rounded text-xs font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-                <ChevronDown className="size-3.5 transition-transform group-open/workflow:rotate-180" />
-                Tagesplanung & nächste Schritte
-                {(formData.waitingFor || formData.plannedFor) && <span className="ml-auto text-[11px] font-normal">{formData.waitingFor ? "Wartet auf Rückmeldung" : `Eingeplant ${format(parseISO(formData.plannedFor!), "dd.MM.")}`}</span>}
-              </summary>
-              <div className="space-y-3 pt-3">
-              <label className="block space-y-1.5 text-xs text-muted-foreground">Nächster Schritt
-                <Input maxLength={500} aria-label="Nächster Schritt" value={formData.nextStep ?? ""} placeholder="Was ist konkret als Nächstes zu tun?" onChange={e => setFormData({ ...formData, nextStep: e.target.value || null })} />
-              </label>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block space-y-1.5 text-xs text-muted-foreground">Eingeplant für
-                  <Input type="date" aria-label="Eingeplant für" value={formData.plannedFor ?? ""} onChange={e => setFormData({ ...formData, plannedFor: e.target.value || null })} />
-                </label>
-                <label className="block space-y-1.5 text-xs text-muted-foreground">Wartet auf
-                  <Input maxLength={200} aria-label="Wartet auf" value={formData.waitingFor ?? ""} placeholder="Person oder Rückmeldung" onChange={e => setFormData({ ...formData, waitingFor: e.target.value || null, reviewOn: e.target.value ? formData.reviewOn : null })} />
-                </label>
-              </div>
-              {formData.waitingFor && <label className="block space-y-1.5 text-xs text-muted-foreground">Wiedervorlage
-                <Input type="date" aria-label="Wiedervorlage" value={formData.reviewOn ?? ""} onChange={e => setFormData({ ...formData, reviewOn: e.target.value || null })} />
-              </label>}
-              </div>
-            </details>}
             {formData.sourceNoteId && <div className="mb-4 text-xs text-muted-foreground">{onOpenSource ? <Button type="button" variant="link" size="sm" className="h-auto px-0 text-xs" onClick={onOpenSource}><StickyNote className="size-3" />Ursprungsnotiz öffnen</Button> : "Aus einer Notiz abgeleitet"}</div>}
             {formData.type === "note" && <label className="mb-4 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={!!formData.pinned} onChange={e => setFormData({ ...formData, pinned: e.target.checked })} />Auf Heute anheften</label>}
 
@@ -312,7 +289,7 @@ export function EditItemDialog({ item, open, onClose, onSave, onDelete, isNew = 
             <div className="space-y-2 pt-4 border-t">
               <Textarea
                 className="min-h-[150px] resize-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 text-sm leading-relaxed"
-                placeholder={formData.type === "todo" ? "Details oder nächste Schritte hinzufügen..." : "Notiz ausarbeiten..."}
+                placeholder={formData.type === "todo" ? "Details hinzufügen..." : "Notiz ausarbeiten..."}
                 value={formData.description || ""}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />

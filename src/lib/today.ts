@@ -3,8 +3,7 @@ import type { Item } from "./schema";
 
 export function dayKey(date: Date): string { return format(date, "yyyy-MM-dd"); }
 
-export function nextStepPreview(item: Item): string {
-  if (item.nextStep?.trim()) return item.nextStep.trim();
+export function descriptionPreview(item: Item): string {
   return (item.description ?? "").split(/\r?\n/)
     .map(line => line.trim().replace(/^[-*]\s+|^\d+[.)]\s+/, ""))
     .find(line => line && !/^https?:\/\/|^[{\[}\]]/.test(line)) ?? "";

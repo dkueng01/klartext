@@ -16,7 +16,7 @@ import { useCurrentDay } from "@/hooks/use-current-day";
 import { useUrlFilters } from "@/hooks/use-url-filters";
 import { ParsedResult } from "@/lib/parser";
 import { Item } from "@/lib/schema";
-import { nextStepPreview, selectToday } from "@/lib/today";
+import { descriptionPreview, selectToday } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { stackClientApp } from "@/stack/client";
 
@@ -150,7 +150,7 @@ export default function TodayPage() {
             <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground"><span className="size-1.5 rounded-full bg-green-600" />Jetzt</h3>
             <button type="button" className="block w-full rounded text-left text-base font-semibold leading-snug [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setEditingItem(visibleFocus)}>{visibleFocus.content}</button>
             <TaskMeta item={visibleFocus} now={now} />
-            {nextStepPreview(visibleFocus) && <p className="mt-3 line-clamp-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">{nextStepPreview(visibleFocus)}</p>}
+            {descriptionPreview(visibleFocus) && <p className="mt-3 line-clamp-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">{descriptionPreview(visibleFocus)}</p>}
             <div className="mt-4 flex items-center gap-2">
               <Button size="sm" disabled={isSaving} onClick={() => void complete(visibleFocus)}><Check />Erledigt</Button>
               <Button size="sm" variant="ghost" disabled={isSaving} onClick={() => void patchItem(visibleFocus.id, { focusedOn: null })}><Pause />Pause</Button>

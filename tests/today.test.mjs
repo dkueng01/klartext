@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dayKey, nextStepPreview, selectToday } from "../src/lib/today.ts";
+import { dayKey, descriptionPreview, selectToday } from "../src/lib/today.ts";
 import { itemFromRow, itemToRow } from "../src/lib/item-storage.ts";
 
 const now = new Date(2026, 8, 11, 12);
@@ -76,14 +76,14 @@ test("paused work remains planned; done and waiting tasks cannot be focused", ()
   assert.equal(result.completedPlanCount, 1);
 });
 
-test("pins keep older reference notes accessible; previews prefer the next step", () => {
+test("pins keep older reference notes accessible; previews show the description", () => {
   const result = selectToday([
     item("new", { type: "note", createdAt: now }),
     item("pinned", { type: "note", pinned: true }),
   ], now);
   assert.deepEqual(ids(result.notes), ["pinned", "new"]);
-  assert.equal(nextStepPreview(item("task", { nextStep: "Call", description: "Other" })), "Call");
-  assert.equal(nextStepPreview(item("task", { description: "https://example.com\n\n- Bild bestellen" })), "Bild bestellen");
+  assert.equal(descriptionPreview(item("task", { nextStep: "Call", description: "Other" })), "Other");
+  assert.equal(descriptionPreview(item("task", { description: "https://example.com\n\n- Bild bestellen" })), "Bild bestellen");
 });
 
 test("nullable workflow fields can be cleared without silently erasing other metadata", () => {
